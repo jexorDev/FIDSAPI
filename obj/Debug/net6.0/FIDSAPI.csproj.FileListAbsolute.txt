@@ -25,3 +25,4 @@ C:\Users\dusti\source\repos\FIDSAPI\obj\Debug\net6.0\FIDSAPI.dll
 C:\Users\dusti\source\repos\FIDSAPI\obj\Debug\net6.0\ref\FIDSAPI.dll
 C:\Users\dusti\source\repos\FIDSAPI\obj\Debug\net6.0\FIDSAPI.pdb
 C:\Users\dusti\source\repos\FIDSAPI\obj\Debug\net6.0\FIDSAPI.genruntimeconfig.cache
+C:\Users\dusti\source\repos\FIDSAPI\bin\Debug\net6.0\Newtonsoft.Json.dll
