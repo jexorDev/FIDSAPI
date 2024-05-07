@@ -12,7 +12,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy(name: CorsPolicyName,
     policy =>
     {
-        policy.WithOrigins("https://bnafids.netlify.com");
+        policy.WithOrigins("https://bnafids.netlify.app");
     });
 });
 

@@ -42,6 +42,8 @@ namespace FIDSAPI.Controllers
                         {
                             Status = arrival.status,
                             Disposition = Disposition.Arrival,
+                            FlightNumber = arrival.flight_number,
+                            AirportGate = arrival.gate_destination,
                             AirlineIdentifier = arrival.operator_iata,
                             AirlineName = "", //TODO: Mapping
                             ScheduledDepartureTime = arrival.scheduled_out,
