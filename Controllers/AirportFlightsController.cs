@@ -198,27 +198,34 @@ namespace FIDSAPI.Controllers
 
         private string GetAirlineWithCodesharePartners(string airline, List<string> codesharePartners)
         {
-            var convertedAirline = Airlines[GetAirline(airline)][0];
-            var convertedCodesharePartners = new List<string>();
-
-            foreach (var codeshareParter in codesharePartners)
+            try
             {
-                foreach (var key in Airlines.Keys)
+                var convertedAirline = Airlines[GetAirline(airline)][0];
+                var convertedCodesharePartners = new List<string>();
+
+                foreach (var codeshareParter in codesharePartners)
                 {
-                    var airlineWithIata = Airlines[key];
-
-                    if (airlineWithIata[1].StartsWith(codeshareParter))
+                    foreach (var key in Airlines.Keys)
                     {
-                        convertedCodesharePartners.Add(airlineWithIata[0]);
-                    }
+                        var airlineWithIata = Airlines[key];
+
+                        if (airlineWithIata[1].StartsWith(codeshareParter))
+                        {
+                            convertedCodesharePartners.Add(airlineWithIata[0]);
+                        }
                     
+                    }
                 }
+
+                convertedCodesharePartners.Add(convertedAirline);
+
+                return String.Join(" | ", convertedCodesharePartners);
+
             }
-
-            convertedCodesharePartners.Add(convertedAirline);
-
-            return String.Join(" | ", convertedCodesharePartners);
-
+            catch
+            {
+                return string.Empty;
+            }
 
         }
 
