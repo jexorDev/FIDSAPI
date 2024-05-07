@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "dgSpecHash": "3nTuBmdPlMUOLKCsQMQ8yx7U9GVzMS3ufVC9KP4m8b54UeNWobA5iOjXSlSYW+e1XAMJ4rSuoDSGhX3o74qUNA==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\dusti\\source\\repos\\FIDSAPI\\FIDSAPI.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\dusti\\.nuget\\packages\\microsoft.extensions.apidescription.server\\3.0.0\\microsoft.extensions.apidescription.server.3.0.0.nupkg.sha512",
+    "C:\\Users\\dusti\\.nuget\\packages\\microsoft.openapi\\1.2.3\\microsoft.openapi.1.2.3.nupkg.sha512",
+    "C:\\Users\\dusti\\.nuget\\packages\\swashbuckle.aspnetcore\\6.2.3\\swashbuckle.aspnetcore.6.2.3.nupkg.sha512",
+    "C:\\Users\\dusti\\.nuget\\packages\\swashbuckle.aspnetcore.swagger\\6.2.3\\swashbuckle.aspnetcore.swagger.6.2.3.nupkg.sha512",
+    "C:\\Users\\dusti\\.nuget\\packages\\swashbuckle.aspnetcore.swaggergen\\6.2.3\\swashbuckle.aspnetcore.swaggergen.6.2.3.nupkg.sha512",
+    "C:\\Users\\dusti\\.nuget\\packages\\swashbuckle.aspnetcore.swaggerui\\6.2.3\\swashbuckle.aspnetcore.swaggerui.6.2.3.nupkg.sha512"
+  ],
+  "logs": []
+}
