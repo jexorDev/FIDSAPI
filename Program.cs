@@ -9,10 +9,10 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(name: CorsPolicyName,
+    options.AddPolicy(name: "bnafidspolicy",
     policy =>
     {
-        policy.WithOrigins("https://bnafids.netlify.app");
+        policy.WithOrigins("https://bnafids.netlify.app").WithMethods("GET");
     });
 });
 
