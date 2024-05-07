@@ -122,44 +122,51 @@ namespace FIDSAPI.Controllers
                 
                 if (flightAwareResponse != null)
                 {
-                    foreach (var arrival in flightAwareResponse.arrivals)
+                    if (DispositionFilter.All.Equals(disposition) || DispositionFilter.Arriving.Equals(disposition))
                     {
-                        flights.Add(new BaseAirportFlightModel
+                        foreach (var arrival in flightAwareResponse.arrivals)
                         {
-                            Status = arrival.status,
-                            Disposition = Disposition.Arrival,
-                            FlightNumber = arrival.flight_number,
-                            AirportGate = arrival.gate_destination,
-                            AirlineIdentifier = arrival.operator_icao,
-                            AirlineName = GetAirlineWithCodesharePartners(arrival.operator_icao, arrival.codeshares), 
-                            ScheduledDepartureTime = arrival.scheduled_out,
-                            ActualDepartureTime = arrival.actual_out,
-                            ScheduledArrivalTime = arrival.scheduled_in,
-                            ActualArrivalTime = arrival.actual_in,
-                            CityCode = arrival.origin.code_iata,
-                            CityName = arrival.origin.city,
-                            CityAirportname = arrival.origin.name
-                        });
+                            flights.Add(new BaseAirportFlightModel
+                            {
+                                Status = arrival.status,
+                                Disposition = Disposition.Arrival,
+                                FlightNumber = arrival.flight_number,
+                                AirportGate = arrival.gate_destination,
+                                AirlineIdentifier = arrival.operator_icao,
+                                AirlineName = GetAirlineWithCodesharePartners(arrival.operator_icao, arrival.codeshares), 
+                                ScheduledDepartureTime = arrival.scheduled_out,
+                                ActualDepartureTime = arrival.actual_out,
+                                ScheduledArrivalTime = arrival.scheduled_in,
+                                ActualArrivalTime = arrival.actual_in,
+                                CityCode = arrival.origin.code_iata,
+                                CityName = arrival.origin.city,
+                                CityAirportname = arrival.origin.name
+                            });
+                        }
                     }
 
-                    foreach (var arrival in flightAwareResponse.departures)
+                    if (DispositionFilter.All.Equals(disposition) || DispositionFilter.Departing.Equals(disposition))
                     {
-                        flights.Add(new BaseAirportFlightModel
+                        foreach (var arrival in flightAwareResponse.departures)
                         {
-                            Status = arrival.status,
-                            Disposition = Disposition.Departure,
-                            FlightNumber = arrival.flight_number,
-                            AirportGate = arrival.gate_destination,
-                            AirlineIdentifier = arrival.operator_iata,
-                            AirlineName = GetAirlineWithCodesharePartners(arrival.operator_icao, arrival.codeshares),
-                            ScheduledDepartureTime = arrival.scheduled_out,
-                            ActualDepartureTime = arrival.actual_out,
-                            ScheduledArrivalTime = arrival.scheduled_in,
-                            ActualArrivalTime = arrival.actual_in,
-                            CityCode = arrival.destination.code_iata,
-                            CityName = arrival.destination.city,
-                            CityAirportname = arrival.destination.name
-                        });
+                            flights.Add(new BaseAirportFlightModel
+                            {
+                                Status = arrival.status,
+                                Disposition = Disposition.Departure,
+                                FlightNumber = arrival.flight_number,
+                                AirportGate = arrival.gate_destination,
+                                AirlineIdentifier = arrival.operator_iata,
+                                AirlineName = GetAirlineWithCodesharePartners(arrival.operator_icao, arrival.codeshares),
+                                ScheduledDepartureTime = arrival.scheduled_out,
+                                ActualDepartureTime = arrival.actual_out,
+                                ScheduledArrivalTime = arrival.scheduled_in,
+                                ActualArrivalTime = arrival.actual_in,
+                                CityCode = arrival.destination.code_iata,
+                                CityName = arrival.destination.city,
+                                CityAirportname = arrival.destination.name
+                            });
+
+                    }
                     }
                 }
 
@@ -200,26 +207,23 @@ namespace FIDSAPI.Controllers
         {
             try
             {
-                var convertedAirline = Airlines[GetAirline(airline)][0];
+                var convertedAirline = GetAirline(airline);
                 var convertedCodesharePartners = new List<string>();
 
                 foreach (var codeshareParter in codesharePartners)
                 {
                     foreach (var key in Airlines.Keys)
                     {
-                        var airlineWithIata = Airlines[key];
-
-                        if (airlineWithIata[1].StartsWith(codeshareParter))
+                        if (codeshareParter.StartsWith(key))
                         {
-                            convertedCodesharePartners.Add(airlineWithIata[0]);
+                            convertedCodesharePartners.Add(GetAirline(key));
+                            
                         }
                     
                     }
                 }
 
-                convertedCodesharePartners.Add(convertedAirline);
-
-                return String.Join(" | ", convertedCodesharePartners);
+                return String.Join(" | ", new List<string>() { convertedAirline}.Concat(convertedCodesharePartners));
 
             }
             catch
@@ -237,7 +241,7 @@ namespace FIDSAPI.Controllers
 
             foreach (var key in Airlines.Keys)
             {
-                if (key.StartsWith(airlineSearchKeyword)) return key;
+                if (key.StartsWith(airlineSearchKeyword)) return Airlines[key][0];
 
                 var keywords = Airlines[key];
 
