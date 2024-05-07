@@ -1,5 +1,5 @@
 var builder = WebApplication.CreateBuilder(args);
-const string CorsPolicyName = "_myAllowSpecificOrigins";
+const string BNAFIDSPOLICYNAME = "bnafidspolicy";
 // Add services to the container.
 
 builder.Services.AddControllers();
@@ -9,7 +9,7 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(name: "bnafidspolicy",
+    options.AddPolicy(name: BNAFIDSPOLICYNAME,
     policy =>
     {
         policy.WithOrigins("https://bnafids.netlify.app").WithMethods("GET");
@@ -26,7 +26,7 @@ if (app.Environment.IsDevelopment())
 
 }
 
-app.UseCors();
+app.UseCors(BNAFIDSPOLICYNAME);
 
 app.UseHttpsRedirection();
 
