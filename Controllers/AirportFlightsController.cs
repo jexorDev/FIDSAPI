@@ -18,20 +18,29 @@ namespace FIDSAPI.Controllers
             //KEY: ICAO, VALUE: USER FRIENDLY, IATA
             {"AAY", new List<string> { "ALLEGIANT", "G4" } },
             {"AAL", new List<string> { "AMERICAN", "AA" } },
+            {"ACA", new List<string> { "AIR CANADA", "AC" } },
             {"ASA", new List<string> { "ALASKA", "AS" } },
+            {"ASH", new List<string> { "MESA", "YV" } },
             {"BAW", new List<string> { "BRITISH", "BA" } },
             {"VTE", new List<string> { "CONTOUR", "LF" } },
             {"DAL", new List<string> { "DELTA", "DL" } },
             {"EDV", new List<string> { "ENDEAVOR", "9E" } },
             {"ENY", new List<string> { "ENVOY", "MQ" } }, //AMERICAN AIRLINES
             {"FFT", new List<string> { "FRONTIER", "F9" } },
+            {"FLE", new List<string> { "FLAIR", "F8" } },
             {"JBU", new List<string> { "JETBLUE", "B6" } },
             {"JIA", new List<string> { "PSA", "OH" } }, //AMERICAN AIRLINES
-            {"RPA", new List<string> { "REPUBLIC", "YX" } }, //TODO: CHECK THIS
+            {"ROU", new List<string> { "AIR CANADA ROUGE", "RV" } }, //AMERICAN AIRLINES
+            {"RPA", new List<string> { "REPUBLIC", "YX" } }, 
             {"NKS", new List<string> { "SPIRIT", "NK" } },
+            {"SCX", new List<string> { "SUNCOUNTRY", "SY" } },
             {"SKW", new List<string> { "SKYWEST", "OO" } },
             {"SWA", new List<string> { "SOUTHWEST", "WN" } },
-            {"UAL", new List<string> { "UNITED", "UA" } }
+            {"UAL", new List<string> { "UNITED", "UA" } },
+            {"VIV", new List<string> { "VIVAAEROBUS", "VB" } },
+            {"VTE", new List<string> { "CONTOUR", "LF" } },
+            {"VXP", new List<string> { "AVELO", "XP" } },
+            {"WJA", new List<string> { "WESTJET", "WS" } }
         };
 
         public enum DispositionFilter
