@@ -22,7 +22,6 @@ namespace FIDSAPI.Controllers
             {"ASA", new List<string> { "ALASKA", "AS" } },
             {"ASH", new List<string> { "MESA", "YV" } },
             {"BAW", new List<string> { "BRITISH", "BA" } },
-            {"VTE", new List<string> { "CONTOUR", "LF" } },
             {"DAL", new List<string> { "DELTA", "DL" } },
             {"EDV", new List<string> { "ENDEAVOR", "9E" } },
             {"ENY", new List<string> { "ENVOY", "MQ" } }, //AMERICAN AIRLINES
@@ -277,8 +276,8 @@ namespace FIDSAPI.Controllers
             }
             else if (TimeFilter.At.Equals(timeType))
             {
-                queryStringList.Add($"start={at.AddHours(5).AddMinutes(-1):s}");
-                queryStringList.Add($"end={at.AddHours(5).AddMinutes(1):s}");
+                queryStringList.Add($"start={at.AddHours(5).AddMinutes(-30):s}");
+                queryStringList.Add($"end={at.AddHours(5).AddMinutes(30):s}");
             }
 
             if (!string.IsNullOrWhiteSpace(airline))
