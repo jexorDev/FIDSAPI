@@ -36,9 +36,11 @@ namespace FIDSAPI.Controllers
 
         public enum DispositionFilter
         {
-            Arriving,
-            Departing,
-            All
+            None,
+            Arrived,
+            Departed,
+            ScheduledArriving,
+            ScheduledDepartures
         }
 
         public enum TimeFilter
@@ -58,13 +60,14 @@ namespace FIDSAPI.Controllers
         {
             var parmsList = parmString.Split("-");
 
-            DispositionFilter disposition = DispositionFilter.All;
+            DispositionFilter disposition = DispositionFilter.None;
             TimeFilter timeType = TimeFilter.Between;
             var timeFrom = DateTime.Now;
             var timeTo = GetToTime();
             var timeAt = DateTime.Now;
             var airline = string.Empty;
             var airport = string.Empty;
+            var apiEndpoint = string.Empty;
 
             try
             {
@@ -72,15 +75,31 @@ namespace FIDSAPI.Controllers
                 {
                     if (parm.StartsWith("arriving"))
                     {
-                        disposition = DispositionFilter.Arriving;
+                        disposition = DispositionFilter.ScheduledArriving;
                         var parms = parm.Split(" ");
                         airline = GetAirline(parms[1]);
+                        apiEndpoint = "scheduled_arrivals";
                     }
                     else if (parm.StartsWith("departing"))
                     {
-                        disposition = DispositionFilter.Departing;
+                        disposition = DispositionFilter.ScheduledDepartures;
                         var parms = parm.Split(" ");
                         airline = GetAirline(parms[1]);
+                        apiEndpoint = "scheduled_departures";
+                    }
+                    else if (parm.StartsWith("arrived"))
+                    {
+                        disposition = DispositionFilter.Arrived;
+                        var parms = parm.Split(" ");
+                        airline = GetAirline(parms[1]);
+                        apiEndpoint = "arrivals";
+                    }
+                    else if (parm.StartsWith("departed"))
+                    {
+                        disposition = DispositionFilter.Departed;
+                        var parms = parm.Split(" ");
+                        airline = GetAirline(parms[1]);
+                        apiEndpoint = "departures";
                     }
 
                     if (parm.StartsWith("between"))
@@ -105,15 +124,15 @@ namespace FIDSAPI.Controllers
                 //return BadRequest("Unable to process parameters: ");
             }
 
-
-
             var flights = new List<BaseAirportFlightModel>();
+
+            if (disposition.Equals(DispositionFilter.None)) return flights;
 
             using (HttpClient client = new HttpClient())
             {
                 client.DefaultRequestHeaders.Add("X-Apikey", _configuration["FlightAwareKey"]);
                 var flightAwareQueryString = BuildFlightAwareQueryString(timeType, timeFrom, timeTo, timeAt, airline);
-                var flightAwareResponseObject = await client.GetAsync("https://aeroapi.flightaware.com/aeroapi/airports/KBNA/flights?" + (string.IsNullOrWhiteSpace(flightAwareQueryString) ? "type=Airline" : flightAwareQueryString));
+                var flightAwareResponseObject = await client.GetAsync("https://aeroapi.flightaware.com/aeroapi/airports/KBNA/flights/" + apiEndpoint + "?" + (string.IsNullOrWhiteSpace(flightAwareQueryString) ? "type=Airline" : flightAwareQueryString));
                 var flightAwareResponseBody = flightAwareResponseObject.Content.ReadAsStringAsync().Result;
 
                 if (flightAwareResponseBody == null) return flights;
@@ -122,9 +141,9 @@ namespace FIDSAPI.Controllers
                 
                 if (flightAwareResponse != null)
                 {
-                    if (DispositionFilter.All.Equals(disposition) || DispositionFilter.Arriving.Equals(disposition))
+                    if (DispositionFilter.ScheduledArriving.Equals(disposition))
                     {
-                        foreach (var arrival in flightAwareResponse.arrivals)
+                        foreach (var arrival in flightAwareResponse.scheduled_arrivals)
                         {
                             flights.Add(new BaseAirportFlightModel
                             {
@@ -145,7 +164,54 @@ namespace FIDSAPI.Controllers
                         }
                     }
 
-                    if (DispositionFilter.All.Equals(disposition) || DispositionFilter.Departing.Equals(disposition))
+                    if (DispositionFilter.Arrived.Equals(disposition))
+                    {
+                        foreach (var arrival in flightAwareResponse.arrivals)
+                        {
+                            flights.Add(new BaseAirportFlightModel
+                            {
+                                Status = arrival.status,
+                                Disposition = Disposition.Arrival,
+                                FlightNumber = arrival.flight_number,
+                                AirportGate = arrival.gate_destination,
+                                AirlineIdentifier = arrival.operator_icao,
+                                AirlineName = GetAirlineWithCodesharePartners(arrival.operator_icao, arrival.codeshares),
+                                ScheduledDepartureTime = arrival.scheduled_out,
+                                ActualDepartureTime = arrival.actual_out,
+                                ScheduledArrivalTime = arrival.scheduled_in,
+                                ActualArrivalTime = arrival.actual_in,
+                                CityCode = arrival.origin.code_iata,
+                                CityName = arrival.origin.city,
+                                CityAirportname = arrival.origin.name
+                            });
+                        }
+                    }
+
+                    if (DispositionFilter.ScheduledDepartures.Equals(disposition))
+                    {
+                        foreach (var arrival in flightAwareResponse.scheduled_departures)
+                        {
+                            flights.Add(new BaseAirportFlightModel
+                            {
+                                Status = arrival.status,
+                                Disposition = Disposition.Departure,
+                                FlightNumber = arrival.flight_number,
+                                AirportGate = arrival.gate_destination,
+                                AirlineIdentifier = arrival.operator_iata,
+                                AirlineName = GetAirlineWithCodesharePartners(arrival.operator_icao, arrival.codeshares),
+                                ScheduledDepartureTime = arrival.scheduled_out,
+                                ActualDepartureTime = arrival.actual_out,
+                                ScheduledArrivalTime = arrival.scheduled_in,
+                                ActualArrivalTime = arrival.actual_in,
+                                CityCode = arrival.destination.code_iata,
+                                CityName = arrival.destination.city,
+                                CityAirportname = arrival.destination.name
+                            });
+
+                        }
+                    }
+
+                    if (DispositionFilter.Departed.Equals(disposition))
                     {
                         foreach (var arrival in flightAwareResponse.departures)
                         {
@@ -166,7 +232,7 @@ namespace FIDSAPI.Controllers
                                 CityAirportname = arrival.destination.name
                             });
 
-                    }
+                        }
                     }
                 }
 
