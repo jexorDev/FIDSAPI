@@ -23,11 +23,11 @@ namespace FIDSAPI.Controllers
             {"VTE", new List<string> { "CONTOUR", "LF" } },
             {"DAL", new List<string> { "DELTA", "DL" } },
             {"EDV", new List<string> { "ENDEAVOR", "9E" } },
-            {"MQ", new List<string> { "ENVOY", "MQ" } }, //AMERICAN AIRLINES
+            {"ENY", new List<string> { "ENVOY", "MQ" } }, //AMERICAN AIRLINES
             {"FFT", new List<string> { "FRONTIER", "F9" } },
             {"JBU", new List<string> { "JETBLUE", "B6" } },
             {"JIA", new List<string> { "PSA", "OH" } }, //AMERICAN AIRLINES
-            {"MEP", new List<string> { "REPUBLIC", "YX" } }, //TODO: CHECK THIS
+            {"RPA", new List<string> { "REPUBLIC", "YX" } }, //TODO: CHECK THIS
             {"NKS", new List<string> { "SPIRIT", "NK" } },
             {"SKW", new List<string> { "SKYWEST", "OO" } },
             {"SWA", new List<string> { "SOUTHWEST", "WN" } },
@@ -132,7 +132,7 @@ namespace FIDSAPI.Controllers
             {
                 client.DefaultRequestHeaders.Add("X-Apikey", _configuration["FlightAwareKey"]);
                 var flightAwareQueryString = BuildFlightAwareQueryString(timeType, timeFrom, timeTo, timeAt, airline);
-                var flightAwareResponseObject = await client.GetAsync("https://aeroapi.flightaware.com/aeroapi/airports/KBNA/flights/" + apiEndpoint + "?" + (string.IsNullOrWhiteSpace(flightAwareQueryString) ? "type=Airline" : flightAwareQueryString));
+                var flightAwareResponseObject = await client.GetAsync("https://aeroapi.flightaware.com/aeroapi/airports/KBNA/flights/" + apiEndpoint + "?" + (string.IsNullOrWhiteSpace(airline) ? "type=Airline" : flightAwareQueryString));
                 var flightAwareResponseBody = flightAwareResponseObject.Content.ReadAsStringAsync().Result;
 
                 if (flightAwareResponseBody == null) return flights;
@@ -154,12 +154,14 @@ namespace FIDSAPI.Controllers
                                 AirlineIdentifier = arrival.operator_icao,
                                 AirlineName = GetAirlineWithCodesharePartners(arrival.operator_icao, arrival.codeshares), 
                                 ScheduledDepartureTime = arrival.scheduled_out,
+                                EstimatedDepartureTime = arrival.estimated_out,
                                 ActualDepartureTime = arrival.actual_out,
                                 ScheduledArrivalTime = arrival.scheduled_in,
+                                EstimatedArrivalTime = arrival.estimated_in,
                                 ActualArrivalTime = arrival.actual_in,
                                 CityCode = arrival.origin.code_iata,
                                 CityName = arrival.origin.city,
-                                CityAirportname = arrival.origin.name,
+                                CityAirportName = arrival.origin.name,
                                 RawData = flightAwareResponseBody
                             });
                         }
@@ -178,12 +180,14 @@ namespace FIDSAPI.Controllers
                                 AirlineIdentifier = arrival.operator_icao,
                                 AirlineName = GetAirlineWithCodesharePartners(arrival.operator_icao, arrival.codeshares),
                                 ScheduledDepartureTime = arrival.scheduled_out,
+                                EstimatedDepartureTime = arrival.estimated_out,
                                 ActualDepartureTime = arrival.actual_out,
                                 ScheduledArrivalTime = arrival.scheduled_in,
+                                EstimatedArrivalTime = arrival.estimated_in,
                                 ActualArrivalTime = arrival.actual_in,
                                 CityCode = arrival.origin.code_iata,
                                 CityName = arrival.origin.city,
-                                CityAirportname = arrival.origin.name,
+                                CityAirportName = arrival.origin.name,
                                 RawData = flightAwareResponseBody
                             });
                         }
@@ -202,12 +206,14 @@ namespace FIDSAPI.Controllers
                                 AirlineIdentifier = arrival.operator_iata,
                                 AirlineName = GetAirlineWithCodesharePartners(arrival.operator_icao, arrival.codeshares),
                                 ScheduledDepartureTime = arrival.scheduled_out,
+                                EstimatedDepartureTime = arrival.estimated_out,
                                 ActualDepartureTime = arrival.actual_out,
                                 ScheduledArrivalTime = arrival.scheduled_in,
+                                EstimatedArrivalTime = arrival.estimated_in,
                                 ActualArrivalTime = arrival.actual_in,
                                 CityCode = arrival.destination.code_iata,
                                 CityName = arrival.destination.city,
-                                CityAirportname = arrival.destination.name,
+                                CityAirportName = arrival.destination.name,
                                 RawData = flightAwareResponseBody
                             });
 
@@ -227,12 +233,14 @@ namespace FIDSAPI.Controllers
                                 AirlineIdentifier = arrival.operator_iata,
                                 AirlineName = GetAirlineWithCodesharePartners(arrival.operator_icao, arrival.codeshares),
                                 ScheduledDepartureTime = arrival.scheduled_out,
+                                EstimatedDepartureTime = arrival.estimated_out,
                                 ActualDepartureTime = arrival.actual_out,
                                 ScheduledArrivalTime = arrival.scheduled_in,
+                                EstimatedArrivalTime = arrival.estimated_in,
                                 ActualArrivalTime = arrival.actual_in,
                                 CityCode = arrival.destination.code_iata,
                                 CityName = arrival.destination.city,
-                                CityAirportname = arrival.destination.name,
+                                CityAirportName = arrival.destination.name,
                                 RawData = flightAwareResponseBody
                             });
 

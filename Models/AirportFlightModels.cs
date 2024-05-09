@@ -15,12 +15,14 @@
         public string FlightNumber { get; set; } = string.Empty;
         public string AirportGate { get; set; } = string.Empty;
         public DateTime? ScheduledDepartureTime { get; set; }
+        public DateTime? EstimatedDepartureTime { get; set; }
         public DateTime? ActualDepartureTime { get; set; }
         public DateTime? ScheduledArrivalTime { get; set; }
+        public DateTime? EstimatedArrivalTime { get; set; }
         public DateTime? ActualArrivalTime { get; set; }
         public string CityCode { get; set; } = string.Empty;    
         public string CityName { get; set; } = string.Empty;
-        public string CityAirportname { get; set; } = string.Empty;
+        public string CityAirportName { get; set; } = string.Empty;
         public string RawData { get; set; } = string.Empty;
     }
 
