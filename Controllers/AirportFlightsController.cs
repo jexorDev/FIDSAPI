@@ -251,8 +251,8 @@ namespace FIDSAPI.Controllers
 
             if (TimeFilter.Between.Equals(timeType))
             {
-                queryStringList.Add($"start={start.ToUniversalTime():s}");
-                queryStringList.Add($"end={end.ToUniversalTime():s}");
+                queryStringList.Add($"start={start.AddHours(5):s}");
+                queryStringList.Add($"end={end.AddHours(5):s}");
             }
             else if (TimeFilter.At.Equals(timeType))
             {
