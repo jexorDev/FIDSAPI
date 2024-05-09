@@ -159,7 +159,8 @@ namespace FIDSAPI.Controllers
                                 ActualArrivalTime = arrival.actual_in,
                                 CityCode = arrival.origin.code_iata,
                                 CityName = arrival.origin.city,
-                                CityAirportname = arrival.origin.name
+                                CityAirportname = arrival.origin.name,
+                                RawData = flightAwareResponseBody
                             });
                         }
                     }
@@ -182,7 +183,8 @@ namespace FIDSAPI.Controllers
                                 ActualArrivalTime = arrival.actual_in,
                                 CityCode = arrival.origin.code_iata,
                                 CityName = arrival.origin.city,
-                                CityAirportname = arrival.origin.name
+                                CityAirportname = arrival.origin.name,
+                                RawData = flightAwareResponseBody
                             });
                         }
                     }
@@ -205,7 +207,8 @@ namespace FIDSAPI.Controllers
                                 ActualArrivalTime = arrival.actual_in,
                                 CityCode = arrival.destination.code_iata,
                                 CityName = arrival.destination.city,
-                                CityAirportname = arrival.destination.name
+                                CityAirportname = arrival.destination.name,
+                                RawData = flightAwareResponseBody
                             });
 
                         }
@@ -229,7 +232,8 @@ namespace FIDSAPI.Controllers
                                 ActualArrivalTime = arrival.actual_in,
                                 CityCode = arrival.destination.code_iata,
                                 CityName = arrival.destination.city,
-                                CityAirportname = arrival.destination.name
+                                CityAirportname = arrival.destination.name,
+                                RawData = flightAwareResponseBody
                             });
 
                         }
@@ -256,8 +260,8 @@ namespace FIDSAPI.Controllers
             }
             else if (TimeFilter.At.Equals(timeType))
             {
-                queryStringList.Add($"start={at.AddHours(5):s}");
-                queryStringList.Add($"end={at.AddHours(5):s}");
+                queryStringList.Add($"start={at.AddHours(5).AddMinutes(-1):s}");
+                queryStringList.Add($"end={at.AddHours(5).AddMinutes(1):s}");
             }
 
             if (!string.IsNullOrWhiteSpace(airline))
