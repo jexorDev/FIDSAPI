@@ -256,8 +256,8 @@ namespace FIDSAPI.Controllers
             }
             else if (TimeFilter.At.Equals(timeType))
             {
-                queryStringList.Add($"start={at.ToUniversalTime():s}");
-                queryStringList.Add($"end={at.ToUniversalTime():s}");
+                queryStringList.Add($"start={at.AddHours(5):s}");
+                queryStringList.Add($"end={at.AddHours(5):s}");
             }
 
             if (!string.IsNullOrWhiteSpace(airline))
