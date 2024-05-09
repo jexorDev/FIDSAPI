@@ -196,7 +196,7 @@ namespace FIDSAPI.Controllers
                                 Status = arrival.status,
                                 Disposition = Disposition.Departure,
                                 FlightNumber = arrival.flight_number,
-                                AirportGate = arrival.gate_destination,
+                                AirportGate = arrival.gate_origin,
                                 AirlineIdentifier = arrival.operator_iata,
                                 AirlineName = GetAirlineWithCodesharePartners(arrival.operator_icao, arrival.codeshares),
                                 ScheduledDepartureTime = arrival.scheduled_out,
@@ -220,7 +220,7 @@ namespace FIDSAPI.Controllers
                                 Status = arrival.status,
                                 Disposition = Disposition.Departure,
                                 FlightNumber = arrival.flight_number,
-                                AirportGate = arrival.gate_destination,
+                                AirportGate = arrival.gate_origin,
                                 AirlineIdentifier = arrival.operator_iata,
                                 AirlineName = GetAirlineWithCodesharePartners(arrival.operator_icao, arrival.codeshares),
                                 ScheduledDepartureTime = arrival.scheduled_out,
@@ -251,13 +251,13 @@ namespace FIDSAPI.Controllers
 
             if (TimeFilter.Between.Equals(timeType))
             {
-                queryStringList.Add($"start={start:s}");
-                queryStringList.Add($"end={end:s}");
+                queryStringList.Add($"start={start.ToUniversalTime():s}");
+                queryStringList.Add($"end={end.ToUniversalTime():s}");
             }
             else if (TimeFilter.At.Equals(timeType))
             {
-                queryStringList.Add($"start={at:s}");
-                queryStringList.Add($"end={at:s}");
+                queryStringList.Add($"start={at.ToUniversalTime():s}");
+                queryStringList.Add($"end={at.ToUniversalTime():s}");
             }
 
             if (!string.IsNullOrWhiteSpace(airline))
