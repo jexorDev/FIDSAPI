@@ -71,12 +71,12 @@ namespace FIDSAPI.Controllers
             {
                 SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder();
 
-                builder.DataSource = _configuration["FASTTDatabaseConnection:Server"]; ;
+                builder.DataSource = _configuration["FASTTDatabaseConnection_Server"]; ;
                 builder.Encrypt = true;
                 
-                builder.UserID = _configuration["FASTTDatabaseConnection:Username"];
-                builder.Password = _configuration["FASTTDatabaseConnection:Password"];
-                builder.InitialCatalog = _configuration["FASTTDatabaseConnection:Database"]; ;
+                builder.UserID = _configuration["FASTTDatabaseConnection_Username"];
+                builder.Password = _configuration["FASTTDatabaseConnection_Password"];
+                builder.InitialCatalog = _configuration["FASTTDatabaseConnection_Database"]; ;
                 
                 //using (SqlConnection connection = new SqlConnection(builder.ConnectionString))
                 //{
