@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using FIDSAPI.Models;
 using FIDSAPI.Models.FlightAware;
 using Newtonsoft.Json;
+using System.Data.SqlClient;
 
 namespace FIDSAPI.Controllers
 {
@@ -66,6 +67,50 @@ namespace FIDSAPI.Controllers
         [HttpGet(Name = "GetAirportFlights")]
         public async Task<IEnumerable<BaseAirportFlightModel>> Get(string parmString)
         {
+            try
+            {
+                SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder();
+
+                builder.DataSource = _configuration["FASTTDatabaseConnection:Server"]; ;
+                builder.Encrypt = true;
+                
+                builder.UserID = _configuration["FASTTDatabaseConnection:Username"];
+                builder.Password = _configuration["FASTTDatabaseConnection:Password"];
+                builder.InitialCatalog = _configuration["FASTTDatabaseConnection:Database"]; ;
+                
+                //using (SqlConnection connection = new SqlConnection(builder.ConnectionString))
+                //{
+                //    Console.WriteLine("\nQuery data example:");
+                //    Console.WriteLine("=========================================\n");
+
+                //    connection.Open();
+
+                //    await PopulateFlightTable(connection);
+
+                //    String sql = "SELECT * FROM flights";
+
+                //    using (SqlCommand command = new SqlCommand(sql, connection))
+                //    {
+                //        using (SqlDataReader reader = command.ExecuteReader())
+                //        {
+                //            if (!reader.HasRows)
+                //            {
+                //                await PopulateFlightTable(connection);
+                //            }
+
+                //            while (reader.Read())
+                //            {
+                //                Console.WriteLine("{0} {1}", reader.GetString(0), reader.GetString(1));
+                //            }
+                //        }
+                //    }
+                //}
+            }
+            catch (SqlException e)
+            {
+                Console.WriteLine(e.ToString());
+            }
+
             var parmsList = parmString.Split("-");
 
             DispositionFilter disposition = DispositionFilter.None;
@@ -256,7 +301,71 @@ namespace FIDSAPI.Controllers
                     }
                 }
 
+                foreach (var flight in flights)
+                {
+
+                }
+
                 return flights;
+            }
+        }
+
+        private async Task PopulateFlightTable(SqlConnection conn)
+        {
+            using (HttpClient client = new HttpClient())
+            {
+                client.DefaultRequestHeaders.Add("X-Apikey", _configuration["FlightAwareKey"]);
+                var flightAwareQueryString = BuildFlightAwareQueryString(TimeFilter.Between, new DateTime(DateTime.Now.Ticks), new DateTime(DateTime.Now.Ticks).AddHours(3), DateTime.Now, airline:"");
+                var flightAwareResponseObject = await client.GetAsync("https://aeroapi.flightaware.com/aeroapi/airports/KBNA/flights/scheduled_arrivals?" + flightAwareQueryString);
+                var flightAwareResponseBody = flightAwareResponseObject.Content.ReadAsStringAsync().Result;
+
+                if (flightAwareResponseBody == null) return;
+
+                FlightAwareAirportFlightsResponseObject flightAwareResponse = JsonConvert.DeserializeObject<FlightAwareAirportFlightsResponseObject>(flightAwareResponseBody);
+
+                if (flightAwareResponse != null)
+                {
+                    string sql = @"
+INSERT INTO Flights 
+(
+ Disposition
+,FlightNumber
+,Airline
+,DateTimeScheduled
+,Gate
+,CityName
+,CityAirportName
+,CityAirportCode
+,DateTimeCreated
+)
+VALUES
+(
+ @Disposition
+,@FlightNumber
+,@Airline
+,@DateTimeScheduled
+,@Gate
+,@CityName
+,@CityAirportName
+,@CityAirportCode
+,@DateTimeCreated
+)
+";
+                    using (SqlCommand command = new SqlCommand(sql, conn))
+                    {
+                        command.Parameters.AddWithValue("@Disposition", 0);
+                        command.Parameters.AddWithValue("@FlightNumber", "223");
+                        command.Parameters.AddWithValue("@Airline", "BAW");
+                        command.Parameters.AddWithValue("@DateTimeScheduled", DateTime.Now);
+                        command.Parameters.AddWithValue("@Gate", "T5");
+                        command.Parameters.AddWithValue("@CityName", "London");
+                        command.Parameters.AddWithValue("@CityAirportName", "London Hethrow");
+                        command.Parameters.AddWithValue("@CityAirportCode", "LHR");
+                        command.Parameters.AddWithValue("@DateTimeCreated", DateTime.Now);
+
+                        command.ExecuteNonQuery();
+                    }
+                }
             }
         }
 
@@ -283,6 +392,10 @@ namespace FIDSAPI.Controllers
             if (!string.IsNullOrWhiteSpace(airline))
             {
                 queryStringList.Add($"airline={airline}");
+            }
+            else
+            {
+                queryStringList.Add("type=airline");
             }
 
             return string.Join("&", queryStringList);
