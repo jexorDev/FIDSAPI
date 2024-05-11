@@ -77,34 +77,31 @@ namespace FIDSAPI.Controllers
                 builder.UserID = _configuration["FASTTDatabaseConnection_Username"];
                 builder.Password = _configuration["FASTTDatabaseConnection_Password"];
                 builder.InitialCatalog = _configuration["FASTTDatabaseConnection_Database"]; ;
-                
-                //using (SqlConnection connection = new SqlConnection(builder.ConnectionString))
-                //{
-                //    Console.WriteLine("\nQuery data example:");
-                //    Console.WriteLine("=========================================\n");
 
-                //    connection.Open();
+                using (SqlConnection connection = new SqlConnection(builder.ConnectionString))
+                {
+                    Console.WriteLine("\nQuery data example:");
+                    Console.WriteLine("=========================================\n");
 
-                //    await PopulateFlightTable(connection);
+                    connection.Open();
 
-                //    String sql = "SELECT * FROM flights";
+                    await PopulateFlightTable(connection);
 
-                //    using (SqlCommand command = new SqlCommand(sql, connection))
-                //    {
-                //        using (SqlDataReader reader = command.ExecuteReader())
-                //        {
-                //            if (!reader.HasRows)
-                //            {
-                //                await PopulateFlightTable(connection);
-                //            }
+                    String sql = "SELECT * FROM flights";
 
-                //            while (reader.Read())
-                //            {
-                //                Console.WriteLine("{0} {1}", reader.GetString(0), reader.GetString(1));
-                //            }
-                //        }
-                //    }
-                //}
+                    using (SqlCommand command = new SqlCommand(sql, connection))
+                    {
+                        using (SqlDataReader reader = command.ExecuteReader())
+                        {
+                            if (!reader.HasRows)
+                            {
+                                await PopulateFlightTable(connection);
+                            }
+
+                           
+                        }
+                    }
+                }
             }
             catch (SqlException e)
             {
