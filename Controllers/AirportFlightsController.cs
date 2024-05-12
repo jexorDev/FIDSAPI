@@ -3,6 +3,7 @@ using FIDSAPI.Models;
 using FIDSAPI.Models.FlightAware;
 using Newtonsoft.Json;
 using System.Data.SqlClient;
+using FIDSAPI.Models.DataLayer;
 
 namespace FIDSAPI.Controllers
 {
@@ -64,50 +65,48 @@ namespace FIDSAPI.Controllers
             _logger = logger;
         }
 
+        public async Task GetFast()
+        {
+            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder();
+
+            builder.DataSource = _configuration["FASTTDatabaseConnection_Server"]; 
+            builder.Encrypt = true;
+
+            builder.UserID = _configuration["FASTTDatabaseConnection_Username"];
+            builder.Password = _configuration["FASTTDatabaseConnection_Password"];
+            builder.InitialCatalog = _configuration["FASTTDatabaseConnection_Database"]; 
+
+            using (SqlConnection connection = new SqlConnection(builder.ConnectionString))
+            {
+                connection.Open();
+
+                await PopulateFlightTable("arrivals", connection);
+                await PopulateFlightTable("scheduled_arrivals", connection);
+                await PopulateFlightTable("departures", connection);
+                await PopulateFlightTable("scheduled_departures", connection);
+
+                //String sql = "SELECT * FROM flights";
+
+                //using (SqlCommand command = new SqlCommand(sql, connection))
+                //{
+                //    using (SqlDataReader reader = command.ExecuteReader())
+                //    {
+                //        if (!reader.HasRows)
+                //        {
+                //            await PopulateFlightTable(connection);
+                //        }
+
+
+                //    }
+                //}
+
+                connection.Close();
+            }
+        }           
+
         [HttpGet(Name = "GetAirportFlights")]
         public async Task<IEnumerable<BaseAirportFlightModel>> Get(string parmString)
         {
-            try
-            {
-                SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder();
-
-                builder.DataSource = _configuration["FASTTDatabaseConnection_Server"]; ;
-                builder.Encrypt = true;
-                
-                builder.UserID = _configuration["FASTTDatabaseConnection_Username"];
-                builder.Password = _configuration["FASTTDatabaseConnection_Password"];
-                builder.InitialCatalog = _configuration["FASTTDatabaseConnection_Database"]; ;
-
-                using (SqlConnection connection = new SqlConnection(builder.ConnectionString))
-                {
-                    Console.WriteLine("\nQuery data example:");
-                    Console.WriteLine("=========================================\n");
-
-                    connection.Open();
-
-                    await PopulateFlightTable(connection);
-
-                    String sql = "SELECT * FROM flights";
-
-                    using (SqlCommand command = new SqlCommand(sql, connection))
-                    {
-                        using (SqlDataReader reader = command.ExecuteReader())
-                        {
-                            if (!reader.HasRows)
-                            {
-                                await PopulateFlightTable(connection);
-                            }
-
-                           
-                        }
-                    }
-                }
-            }
-            catch (SqlException e)
-            {
-                Console.WriteLine(e.ToString());
-            }
-
             var parmsList = parmString.Split("-");
 
             DispositionFilter disposition = DispositionFilter.None;
@@ -307,22 +306,162 @@ namespace FIDSAPI.Controllers
             }
         }
 
-        private async Task PopulateFlightTable(SqlConnection conn)
+        private async Task PopulateFlightTable(string resource, SqlConnection conn)
         {
+
             using (HttpClient client = new HttpClient())
             {
+                int count = 0;
+                const string BaseUrl = "https://aeroapi.flightaware.com/aeroapi";
+                var restOfUrl = string.Empty;
+                var cursor = string.Empty;
                 client.DefaultRequestHeaders.Add("X-Apikey", _configuration["FlightAwareKey"]);
-                var flightAwareQueryString = BuildFlightAwareQueryString(TimeFilter.Between, new DateTime(DateTime.Now.Ticks), new DateTime(DateTime.Now.Ticks).AddHours(3), DateTime.Now, airline:"");
-                var flightAwareResponseObject = await client.GetAsync("https://aeroapi.flightaware.com/aeroapi/airports/KBNA/flights/scheduled_arrivals?" + flightAwareQueryString);
-                var flightAwareResponseBody = flightAwareResponseObject.Content.ReadAsStringAsync().Result;
 
-                if (flightAwareResponseBody == null) return;
-
-                FlightAwareAirportFlightsResponseObject flightAwareResponse = JsonConvert.DeserializeObject<FlightAwareAirportFlightsResponseObject>(flightAwareResponseBody);
-
-                if (flightAwareResponse != null)
+                do
                 {
-                    string sql = @"
+                    if (string.IsNullOrWhiteSpace(cursor))
+                    {
+                        DateTime currentUtcDate = DateTime.UtcNow;
+                        DateTime fromDateTime = currentUtcDate.AddHours(-currentUtcDate.Hour).AddMinutes(-currentUtcDate.Minute).AddSeconds(-currentUtcDate.Second).AddHours(-5);
+                        DateTime toDateTime = fromDateTime.AddHours(24).AddSeconds(-1);
+
+
+                        restOfUrl = $"/airports/KBNA/flights/{resource}?type=Airline&start={GetFormattedISODateTime(fromDateTime)}&end={GetFormattedISODateTime(toDateTime)}";
+                    }
+                    else
+                    {
+                        restOfUrl = cursor;
+                    }
+
+                    if (count > 9)
+                    {
+                        Thread.Sleep(60000);
+                        count = 0;
+                    }
+                    var flightAwareResponseObject = await client.GetAsync(BaseUrl + restOfUrl);
+                    count++; 
+                    var flightAwareResponseBody = flightAwareResponseObject.Content.ReadAsStringAsync().Result;
+
+                    if (flightAwareResponseBody == null) return;
+
+                    FlightAwareAirportFlightsResponseObject flightAwareResponse = JsonConvert.DeserializeObject<FlightAwareAirportFlightsResponseObject>(flightAwareResponseBody);
+
+                    if (flightAwareResponse != null)
+                    {
+                        InsertFlights(flightAwareResponse, conn);
+                    }
+
+                    cursor = flightAwareResponse?.links?.next;
+
+                } while (!string.IsNullOrWhiteSpace(cursor));
+            }
+        }
+
+        private string GetFormattedISODateTime (DateTime dateTime)
+        {
+            
+            return $"{dateTime.Year}-{dateTime.Month.ToString().PadLeft(2, '0')}-{dateTime.Day.ToString().PadLeft(2, '0')}T{dateTime.Hour.ToString().PadLeft(2, '0')}:{dateTime.Minute.ToString().PadLeft(2, '0')}:{dateTime.Second.ToString().PadLeft(2, '0')}Z";
+        }
+
+        private void InsertFlights(FlightAwareAirportFlightsResponseObject flightAwareResponse, SqlConnection conn)
+        {
+            if (flightAwareResponse.arrivals != null)
+            {
+                foreach (var arrival in flightAwareResponse.arrivals)
+                {
+                    var flight = new Flight
+                    {
+                        Disposition = true,
+                        FlightNumber = arrival.flight_number,
+                        Airline = arrival.operator_iata,
+                        DateTimeScheduled = arrival.scheduled_in,
+                        DateTimeEstimated = arrival.estimated_in,
+                        DateTimeActual = arrival.actual_in,
+                        Gate = arrival.gate_destination,
+                        CityName = arrival.origin.city,
+                        CityAirportCode = arrival.origin.code_iata,
+                        CityAirportName = arrival.origin.name,
+                        DateTimeCreated = DateTime.UtcNow
+                    };
+
+                    InsertFlight(flight, conn);
+                }
+            }
+
+            
+            if (flightAwareResponse.scheduled_arrivals != null)
+            {
+                foreach (var arrival in flightAwareResponse.scheduled_arrivals)
+                {
+                    var flight = new Flight
+                    {
+                        Disposition = true,
+                        FlightNumber = arrival.flight_number,
+                        Airline = arrival.operator_iata,
+                        DateTimeScheduled = arrival.scheduled_in,
+                        DateTimeEstimated = arrival.estimated_in,
+                        DateTimeActual = arrival.actual_in,
+                        Gate = arrival.gate_destination,
+                        CityName = arrival.origin.city,
+                        CityAirportCode = arrival.origin.code_iata,
+                        CityAirportName = arrival.origin.name,
+                        DateTimeCreated = DateTime.UtcNow
+                    };
+
+                    InsertFlight(flight, conn);
+                }
+            }
+
+            if (flightAwareResponse.departures != null)
+            {
+                foreach (var departure in flightAwareResponse.departures)
+                {
+                    var flight = new Flight
+                    {
+                        Disposition = false,
+                        FlightNumber = departure.flight_number,
+                        Airline = departure.operator_iata,
+                        DateTimeScheduled = departure.scheduled_out,
+                        DateTimeEstimated = departure.estimated_out,
+                        DateTimeActual = departure.actual_out,
+                        Gate = departure.gate_destination,
+                        CityName = departure.destination.city,
+                        CityAirportCode = departure.destination.code_iata,
+                        CityAirportName = departure.destination.name,
+                        DateTimeCreated = DateTime.UtcNow
+                    };
+
+                    InsertFlight(flight, conn);
+                }
+            }
+
+            if (flightAwareResponse.scheduled_departures != null)
+            {
+                foreach (var departure in flightAwareResponse.scheduled_departures)
+                {
+                    var flight = new Flight
+                    {
+                        Disposition = false,
+                        FlightNumber = departure.flight_number,
+                        Airline = departure.operator_iata,
+                        DateTimeScheduled = departure.scheduled_out,
+                        DateTimeEstimated = departure.estimated_out,
+                        DateTimeActual = departure.actual_out,
+                        Gate = departure.gate_destination,
+                        CityName = departure.destination.city,
+                        CityAirportCode = departure.destination.code_iata,
+                        CityAirportName = departure.destination.name,
+                        DateTimeCreated = DateTime.UtcNow
+                    };
+
+                    InsertFlight(flight, conn);
+                }
+            }
+        }
+
+        private void InsertFlight(Flight flight, SqlConnection conn)
+        {
+            string sql = @"
 INSERT INTO Flights 
 (
  Disposition
@@ -348,21 +487,28 @@ VALUES
 ,@DateTimeCreated
 )
 ";
-                    using (SqlCommand command = new SqlCommand(sql, conn))
-                    {
-                        command.Parameters.AddWithValue("@Disposition", 0);
-                        command.Parameters.AddWithValue("@FlightNumber", "223");
-                        command.Parameters.AddWithValue("@Airline", "BAW");
-                        command.Parameters.AddWithValue("@DateTimeScheduled", DateTime.Now);
-                        command.Parameters.AddWithValue("@Gate", "T5");
-                        command.Parameters.AddWithValue("@CityName", "London");
-                        command.Parameters.AddWithValue("@CityAirportName", "London Hethrow");
-                        command.Parameters.AddWithValue("@CityAirportCode", "LHR");
-                        command.Parameters.AddWithValue("@DateTimeCreated", DateTime.Now);
+            using (SqlCommand command = new SqlCommand(sql, conn))
+            {
+                command.Parameters.AddWithValue("@Disposition", flight.Disposition);
+                command.Parameters.AddWithValue("@FlightNumber", flight.FlightNumber ?? "");
+                command.Parameters.AddWithValue("@Airline", flight.Airline ?? "");
+                if (flight.DateTimeScheduled.HasValue)
+                {
+                    command.Parameters.AddWithValue("@DateTimeScheduled", flight.DateTimeScheduled.Value);
 
-                        command.ExecuteNonQuery();
-                    }
                 }
+                else
+                {
+                    command.Parameters.AddWithValue("@DateTimeScheduled", DBNull.Value);
+
+                }
+                command.Parameters.AddWithValue("@Gate", flight.Gate ?? "");
+                command.Parameters.AddWithValue("@CityName", flight.CityName ?? "");
+                command.Parameters.AddWithValue("@CityAirportName", flight.CityAirportName ?? "");
+                command.Parameters.AddWithValue("@CityAirportCode", flight.CityAirportCode ?? "");
+                command.Parameters.AddWithValue("@DateTimeCreated", DateTime.UtcNow);
+
+                command.ExecuteNonQuery();
             }
         }
 
@@ -377,13 +523,13 @@ VALUES
 
             if (TimeFilter.Between.Equals(timeType))
             {
-                queryStringList.Add($"start={start.AddHours(5):s}");
-                queryStringList.Add($"end={end.AddHours(5):s}");
+                queryStringList.Add($"start={start.AddHours(-5):s}");
+                queryStringList.Add($"end={end.AddHours(-5):s}");
             }
             else if (TimeFilter.At.Equals(timeType))
             {
-                queryStringList.Add($"start={at.AddHours(5).AddMinutes(-30):s}");
-                queryStringList.Add($"end={at.AddHours(5).AddMinutes(30):s}");
+                queryStringList.Add($"start={at.AddHours(-5).AddMinutes(-30):s}");
+                queryStringList.Add($"end={at.AddHours(-5).AddMinutes(30):s}");
             }
 
             if (!string.IsNullOrWhiteSpace(airline))
