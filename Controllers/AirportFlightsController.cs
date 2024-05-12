@@ -523,13 +523,13 @@ VALUES
 
             if (TimeFilter.Between.Equals(timeType))
             {
-                queryStringList.Add($"start={start.AddHours(-5):s}");
-                queryStringList.Add($"end={end.AddHours(-5):s}");
+                queryStringList.Add($"start={start.AddHours(5):s}");
+                queryStringList.Add($"end={end.AddHours(5):s}");
             }
             else if (TimeFilter.At.Equals(timeType))
             {
-                queryStringList.Add($"start={at.AddHours(-5).AddMinutes(-30):s}");
-                queryStringList.Add($"end={at.AddHours(-5).AddMinutes(30):s}");
+                queryStringList.Add($"start={at.AddHours(5).AddMinutes(-30):s}");
+                queryStringList.Add($"end={at.AddHours(5).AddMinutes(30):s}");
             }
 
             if (!string.IsNullOrWhiteSpace(airline))
@@ -538,7 +538,7 @@ VALUES
             }
             else
             {
-                queryStringList.Add("type=airline");
+                queryStringList.Add("type=Airline");
             }
 
             return string.Join("&", queryStringList);
