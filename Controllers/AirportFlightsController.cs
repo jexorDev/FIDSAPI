@@ -15,6 +15,22 @@ namespace FIDSAPI.Controllers
         private readonly IConfiguration _configuration;
         private readonly ILogger<AirportFlightsController> _logger;
 
+        private struct Airline
+        {
+            /// <summary>
+            /// User friendly display name of airline
+            /// </summary>
+            public string Name { get; set; }
+            /// <summary>
+            /// IATA Code
+            /// </summary>
+            public string Code { get; set; }
+            /// <summary>
+            /// Repeat offender airline with routinely inconvenienced passengers
+            /// </summary>
+            public bool IsProblem { get; set; }
+        }
+
         private Dictionary<string, List<string>> Airlines = new Dictionary<string, List<string>>()
         {
             //KEY: ICAO, VALUE: USER FRIENDLY, IATA
@@ -42,6 +58,34 @@ namespace FIDSAPI.Controllers
             {"VTE", new List<string> { "CONTOUR", "LF" } },
             {"VXP", new List<string> { "AVELO", "XP" } },
             {"WJA", new List<string> { "WESTJET", "WS" } }
+        };
+
+        private Dictionary<string, Airline> Airlines2 = new Dictionary<string, Airline>()
+        {
+            {"AAY", new Airline { Name = "ALLEGIANT", Code = "G4", IsProblem = true } },
+            {"AAL", new Airline { Name = "AMERICAN", Code = "AA" } },
+            {"ACA", new Airline { Name = "AIR CANADA", Code = "AC" } },
+            {"ASA", new Airline { Name = "ALASKA", Code = "AS" } },
+            {"ASH", new Airline { Name = "MESA", Code = "YV" } },
+            {"BAW", new Airline { Name = "BRITISH", Code = "BA" } },
+            {"DAL", new Airline { Name = "DELTA", Code = "DL" } },
+            {"EDV", new Airline { Name = "ENDEAVOR", Code = "9E" } },
+            {"ENY", new Airline { Name = "ENVOY", Code = "MQ" } }, //AMERICAN AIRLINES
+            {"FFT", new Airline { Name = "FRONTIER", Code = "F9", IsProblem = true } },
+            {"FLE", new Airline { Name = "FLAIR", Code = "F8", IsProblem = true } },
+            {"JBU", new Airline { Name = "JETBLUE", Code = "B6" } },
+            {"JIA", new Airline { Name = "PSA", Code = "OH" } }, //AMERICAN AIRLINES
+            {"ROU", new Airline { Name = "AIR CANADA ROUGE", Code = "RV" } }, //AMERICAN AIRLINES
+            {"RPA", new Airline { Name = "REPUBLIC", Code = "YX" } },
+            {"NKS", new Airline { Name = "SPIRIT", Code = "NK" } },
+            {"SCX", new Airline { Name = "SUNCOUNTRY", Code = "SY", IsProblem = true } },
+            {"SKW", new Airline { Name = "SKYWEST", Code = "OO" } },
+            {"SWA", new Airline { Name = "SOUTHWEST", Code = "WN" } },
+            {"UAL", new Airline { Name = "UNITED", Code = "UA" } },
+            {"VIV", new Airline { Name = "VIVAAEROBUS", Code = "VB" } },
+            {"VTE", new Airline { Name = "CONTOUR", Code = "LF" } },
+            {"VXP", new Airline { Name = "AVELO", Code = "XP" } },
+            {"WJA", new Airline { Name = "WESTJET", Code = "WS" } }
         };
 
         public enum DispositionFilter
@@ -105,7 +149,7 @@ namespace FIDSAPI.Controllers
         }           
 
         [HttpGet(Name = "GetAirportFlights")]
-        public async Task<IEnumerable<BaseAirportFlightModel>> Get(string parmString)
+        public async Task<GetResponseBody> Get([FromQuery] string parmString, [FromQuery] string? nextDataPageUrl)
         {
             var parmsList = parmString.Split("-");
 
@@ -173,18 +217,30 @@ namespace FIDSAPI.Controllers
                 //return BadRequest("Unable to process parameters: ");
             }
 
-            var flights = new List<BaseAirportFlightModel>();
+            var response = new GetResponseBody();
 
-            if (disposition.Equals(DispositionFilter.None)) return flights;
+            if (disposition.Equals(DispositionFilter.None)) return response;
+
+            const string BaseUri = "https://aeroapi.flightaware.com/aeroapi";
 
             using (HttpClient client = new HttpClient())
             {
                 client.DefaultRequestHeaders.Add("X-Apikey", _configuration["FlightAwareKey"]);
-                var flightAwareQueryString = BuildFlightAwareQueryString(timeType, timeFrom, timeTo, timeAt, airline);
-                var flightAwareResponseObject = await client.GetAsync("https://aeroapi.flightaware.com/aeroapi/airports/KBNA/flights/" + apiEndpoint + "?" + (string.IsNullOrWhiteSpace(airline) ? "type=Airline" : flightAwareQueryString));
+                string endpoint = string.Empty;
+
+                if (string.IsNullOrWhiteSpace(nextDataPageUrl))
+                {
+                    endpoint = $"/airports/KBNA/flights/{apiEndpoint}?{BuildFlightAwareQueryString(timeType, timeFrom, timeTo, timeAt, airline)}";
+                }
+                else
+                {
+                    endpoint = nextDataPageUrl;
+                }
+
+                var flightAwareResponseObject = await client.GetAsync($"{BaseUri}{endpoint}");
                 var flightAwareResponseBody = flightAwareResponseObject.Content.ReadAsStringAsync().Result;
 
-                if (flightAwareResponseBody == null) return flights;
+                if (flightAwareResponseBody == null) return response;
 
                 FlightAwareAirportFlightsResponseObject flightAwareResponse = JsonConvert.DeserializeObject<FlightAwareAirportFlightsResponseObject>(flightAwareResponseBody);
                 
@@ -194,7 +250,7 @@ namespace FIDSAPI.Controllers
                     {
                         foreach (var arrival in flightAwareResponse.scheduled_arrivals)
                         {
-                            flights.Add(new BaseAirportFlightModel
+                            response.Results.Add(new BaseAirportFlightModel
                             {
                                 Status = arrival.status,
                                 Disposition = Disposition.Arrival,
@@ -220,7 +276,7 @@ namespace FIDSAPI.Controllers
                     {
                         foreach (var arrival in flightAwareResponse.arrivals)
                         {
-                            flights.Add(new BaseAirportFlightModel
+                            response.Results.Add(new BaseAirportFlightModel
                             {
                                 Status = arrival.status,
                                 Disposition = Disposition.Arrival,
@@ -246,7 +302,7 @@ namespace FIDSAPI.Controllers
                     {
                         foreach (var arrival in flightAwareResponse.scheduled_departures)
                         {
-                            flights.Add(new BaseAirportFlightModel
+                            response.Results.Add(new BaseAirportFlightModel
                             {
                                 Status = arrival.status,
                                 Disposition = Disposition.Departure,
@@ -273,7 +329,7 @@ namespace FIDSAPI.Controllers
                     {
                         foreach (var arrival in flightAwareResponse.departures)
                         {
-                            flights.Add(new BaseAirportFlightModel
+                            response.Results.Add(new BaseAirportFlightModel
                             {
                                 Status = arrival.status,
                                 Disposition = Disposition.Departure,
@@ -295,14 +351,13 @@ namespace FIDSAPI.Controllers
 
                         }
                     }
+
+                    response.NextDataPageUrl = flightAwareResponse?.links?.next;
                 }
 
-                foreach (var flight in flights)
-                {
+               
 
-                }
-
-                return flights;
+                return response;
             }
         }
 
