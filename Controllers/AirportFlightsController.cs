@@ -4,6 +4,7 @@ using FIDSAPI.Models.FlightAware;
 using Newtonsoft.Json;
 using System.Data.SqlClient;
 using FIDSAPI.Models.DataLayer;
+using System.Web;
 
 namespace FIDSAPI.Controllers
 {
@@ -151,6 +152,7 @@ namespace FIDSAPI.Controllers
         [HttpGet(Name = "GetAirportFlights")]
         public async Task<GetResponseBody> Get([FromQuery] string parmString, [FromQuery] string? nextDataPageUrl)
         {
+            var nextDataPageUrlDecoded = HttpUtility.UrlDecode(nextDataPageUrl);
             var parmsList = parmString.Split("-");
 
             DispositionFilter disposition = DispositionFilter.None;
@@ -219,7 +221,8 @@ namespace FIDSAPI.Controllers
 
             var response = new GetResponseBody();
 
-            if (disposition.Equals(DispositionFilter.None)) return response;
+            if (string.IsNullOrWhiteSpace(nextDataPageUrl) && disposition.Equals(DispositionFilter.None)) return response;
+
 
             const string BaseUri = "https://aeroapi.flightaware.com/aeroapi";
 
@@ -234,7 +237,7 @@ namespace FIDSAPI.Controllers
                 }
                 else
                 {
-                    endpoint = nextDataPageUrl;
+                    endpoint = nextDataPageUrlDecoded;
                 }
 
                 var flightAwareResponseObject = await client.GetAsync($"{BaseUri}{endpoint}");
@@ -246,7 +249,7 @@ namespace FIDSAPI.Controllers
                 
                 if (flightAwareResponse != null)
                 {
-                    if (DispositionFilter.ScheduledArriving.Equals(disposition))
+                    if (flightAwareResponse.scheduled_arrivals != null)
                     {
                         foreach (var arrival in flightAwareResponse.scheduled_arrivals)
                         {
@@ -272,7 +275,7 @@ namespace FIDSAPI.Controllers
                         }
                     }
 
-                    if (DispositionFilter.Arrived.Equals(disposition))
+                    if (flightAwareResponse.arrivals != null)
                     {
                         foreach (var arrival in flightAwareResponse.arrivals)
                         {
@@ -298,7 +301,7 @@ namespace FIDSAPI.Controllers
                         }
                     }
 
-                    if (DispositionFilter.ScheduledDepartures.Equals(disposition))
+                    if (flightAwareResponse.scheduled_departures != null)
                     {
                         foreach (var arrival in flightAwareResponse.scheduled_departures)
                         {
@@ -325,7 +328,7 @@ namespace FIDSAPI.Controllers
                         }
                     }
 
-                    if (DispositionFilter.Departed.Equals(disposition))
+                    if (flightAwareResponse.departures != null)
                     {
                         foreach (var arrival in flightAwareResponse.departures)
                         {
@@ -352,7 +355,7 @@ namespace FIDSAPI.Controllers
                         }
                     }
 
-                    response.NextDataPageUrl = flightAwareResponse?.links?.next;
+                    response.NextDataPageUrl = HttpUtility.UrlEncode(flightAwareResponse?.links?.next);
                 }
 
                
