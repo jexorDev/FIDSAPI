@@ -12,7 +12,17 @@ builder.Services.AddCors(options =>
     options.AddPolicy(name: BNAFIDSPOLICYNAME,
     policy =>
     {
-        policy.WithOrigins("https://bnafids.netlify.app", "https://bnafids-yz0a--5173--34455753.local-credentialless.webcontainer.io").WithMethods("GET");
+        var prodSiteUrl = builder.Configuration.GetValue<string>("ProductionSiteUrl");
+        var devSiteUrl = builder.Configuration.GetValue<string>("DevSiteUrl");
+
+        if (!string.IsNullOrWhiteSpace(prodSiteUrl))
+        {
+            policy.WithOrigins(prodSiteUrl).WithMethods("GET");
+        }
+        if (!string.IsNullOrWhiteSpace(devSiteUrl))
+        {
+            policy.WithOrigins(devSiteUrl).WithMethods("GET");
+        }
     });
 });
 
