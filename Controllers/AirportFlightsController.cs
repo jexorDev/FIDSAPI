@@ -25,7 +25,11 @@ namespace FIDSAPI.Controllers
             /// <summary>
             /// IATA Code
             /// </summary>
-            public string Code { get; set; }
+            public string IATACode { get; set; }
+            /// <summary>
+            /// ICAO Code
+            /// </summary>
+            public string ICAOCode { get; set; }
             /// <summary>
             /// Repeat offender airline with routinely inconvenienced passengers
             /// </summary>
@@ -63,30 +67,30 @@ namespace FIDSAPI.Controllers
 
         private Dictionary<string, Airline> Airlines2 = new Dictionary<string, Airline>()
         {
-            {"AAY", new Airline { Name = "ALLEGIANT", Code = "G4", IsProblem = true } },
-            {"AAL", new Airline { Name = "AMERICAN", Code = "AA" } },
-            {"ACA", new Airline { Name = "AIR CANADA", Code = "AC" } },
-            {"ASA", new Airline { Name = "ALASKA", Code = "AS" } },
-            {"ASH", new Airline { Name = "MESA", Code = "YV" } },
-            {"BAW", new Airline { Name = "BRITISH", Code = "BA" } },
-            {"DAL", new Airline { Name = "DELTA", Code = "DL" } },
-            {"EDV", new Airline { Name = "ENDEAVOR", Code = "9E" } },
-            {"ENY", new Airline { Name = "ENVOY", Code = "MQ" } }, //AMERICAN AIRLINES
-            {"FFT", new Airline { Name = "FRONTIER", Code = "F9", IsProblem = true } },
-            {"FLE", new Airline { Name = "FLAIR", Code = "F8", IsProblem = true } },
-            {"JBU", new Airline { Name = "JETBLUE", Code = "B6" } },
-            {"JIA", new Airline { Name = "PSA", Code = "OH" } }, //AMERICAN AIRLINES
-            {"ROU", new Airline { Name = "AIR CANADA ROUGE", Code = "RV" } }, //AMERICAN AIRLINES
-            {"RPA", new Airline { Name = "REPUBLIC", Code = "YX" } },
-            {"NKS", new Airline { Name = "SPIRIT", Code = "NK" } },
-            {"SCX", new Airline { Name = "SUNCOUNTRY", Code = "SY", IsProblem = true } },
-            {"SKW", new Airline { Name = "SKYWEST", Code = "OO" } },
-            {"SWA", new Airline { Name = "SOUTHWEST", Code = "WN" } },
-            {"UAL", new Airline { Name = "UNITED", Code = "UA" } },
-            {"VIV", new Airline { Name = "VIVAAEROBUS", Code = "VB" } },
-            {"VTE", new Airline { Name = "CONTOUR", Code = "LF" } },
-            {"VXP", new Airline { Name = "AVELO", Code = "XP" } },
-            {"WJA", new Airline { Name = "WESTJET", Code = "WS" } }
+            {"G4", new Airline { Name = "ALLEGIANT", IATACode = "G4", ICAOCode = "AAY", IsProblem = true } },
+            {"AA", new Airline { Name = "AMERICAN", IATACode = "AA", ICAOCode = "AAL" } },
+            {"AC", new Airline { Name = "AIR CANADA", IATACode = "AC", ICAOCode = "ACA" } },
+            {"AS", new Airline { Name = "ALASKA", IATACode = "AS", ICAOCode = "ASA" } },
+            {"YV", new Airline { Name = "MESA", IATACode = "YV", ICAOCode = "ASH" } },
+            {"BA", new Airline { Name = "BRITISH", IATACode = "BA", ICAOCode = "BAW" } },
+            {"DL", new Airline { Name = "DELTA", IATACode = "DL", ICAOCode = "DAL" } },
+            {"9E", new Airline { Name = "ENDEAVOR", IATACode = "9E", ICAOCode = "EDV" } },
+            {"MQ", new Airline { Name = "ENVOY", IATACode = "MQ", ICAOCode = "ENY" } }, //AMERICAN AIRLINES
+            {"F9", new Airline { Name = "FRONTIER", IATACode = "F9", ICAOCode = "FFT", IsProblem = true } },
+            {"F8", new Airline { Name = "FLAIR", IATACode = "F8", ICAOCode = "FLE", IsProblem = true } },
+            {"B6", new Airline { Name = "JETBLUE", IATACode = "B6", ICAOCode = "JBU" } },
+            {"OH", new Airline { Name = "PSA", IATACode = "OH", ICAOCode = "JIA" } }, //AMERICAN AIRLINES
+            {"RV", new Airline { Name = "AIR CANADA ROUGE", IATACode = "RV", ICAOCode = "ROU" } }, //AMERICAN AIRLINES
+            {"YX", new Airline { Name = "REPUBLIC", IATACode = "YX", ICAOCode = "RPA" } },
+            {"NK", new Airline { Name = "SPIRIT", IATACode = "NK", ICAOCode = "NKS" } },
+            {"SY", new Airline { Name = "SUNCOUNTRY", IATACode = "SY", ICAOCode = "SCX", IsProblem = true } },
+            {"OO", new Airline { Name = "SKYWEST", IATACode = "OO", ICAOCode = "SKW" } },
+            {"WN", new Airline { Name = "SOUTHWEST", IATACode = "WN", ICAOCode = "SWA" } },
+            {"UA", new Airline { Name = "UNITED", IATACode = "UA", ICAOCode = "UAL" } },
+            {"VB", new Airline { Name = "VIVAAEROBUS", IATACode = "VB", ICAOCode = "VIV" } },
+            {"LF", new Airline { Name = "CONTOUR", IATACode = "LF", ICAOCode = "VTE" } },
+            {"XP", new Airline { Name = "AVELO", IATACode = "XP", ICAOCode = "VXP", IsProblem = true } },
+            {"WS", new Airline { Name = "WESTJET", IATACode = "WS", ICAOCode = "WJA" } }
         };
 
         public enum DispositionFilter
@@ -100,6 +104,7 @@ namespace FIDSAPI.Controllers
 
         public enum TimeFilter
         {
+            None,
             Between,
             At
         }
@@ -110,24 +115,43 @@ namespace FIDSAPI.Controllers
             _logger = logger;
         }
 
-        public async Task GetFast()
+        public class FastDatabaseConnectionStringBuilder
         {
-            SqlConnectionStringBuilder builder = new SqlConnectionStringBuilder();
+            private static SqlConnectionStringBuilder? _sqlConnectionStringBuilder;
+            public static string GetSqlConnectionString(IConfiguration config)
+            {
+                if (_sqlConnectionStringBuilder == null)
+                {
+                    _sqlConnectionStringBuilder = new SqlConnectionStringBuilder();
 
-            builder.DataSource = _configuration["FASTTDatabaseConnection_Server"]; 
-            builder.Encrypt = true;
+                    _sqlConnectionStringBuilder.Encrypt = true;
 
-            builder.UserID = _configuration["FASTTDatabaseConnection_Username"];
-            builder.Password = _configuration["FASTTDatabaseConnection_Password"];
-            builder.InitialCatalog = _configuration["FASTTDatabaseConnection_Database"]; 
+                    _sqlConnectionStringBuilder.DataSource = config["FASTTDatabaseConnection_Server"];
+                    _sqlConnectionStringBuilder.UserID = config["FASTTDatabaseConnection_Username"];
+                    _sqlConnectionStringBuilder.Password = config["FASTTDatabaseConnection_Password"];
+                    _sqlConnectionStringBuilder.InitialCatalog = config["FASTTDatabaseConnection_Database"];
+                }
 
-            using (SqlConnection connection = new SqlConnection(builder.ConnectionString))
+                return _sqlConnectionStringBuilder.ToString();
+            }
+
+        }
+
+        [HttpPost(Name = "PostPopulateCache")]
+        public async Task PopulateCache()
+        {
+
+
+            using (SqlConnection connection = new SqlConnection(FastDatabaseConnectionStringBuilder.GetSqlConnectionString(_configuration)))
             {
                 connection.Open();
 
                 await PopulateFlightTable("arrivals", connection);
+                Thread.Sleep(60000);
                 await PopulateFlightTable("scheduled_arrivals", connection);
+                Thread.Sleep(60000);
                 await PopulateFlightTable("departures", connection);
+                Thread.Sleep(60000);
                 await PopulateFlightTable("scheduled_departures", connection);
 
                 //String sql = "SELECT * FROM flights";
@@ -156,13 +180,15 @@ namespace FIDSAPI.Controllers
             var parmsList = parmString.Split("-");
 
             DispositionFilter disposition = DispositionFilter.None;
-            TimeFilter timeType = TimeFilter.Between;
+            TimeFilter timeType = TimeFilter.None;
             var timeFrom = DateTime.Now;
             var timeTo = GetToTime();
             var timeAt = DateTime.Now;
-            var airline = string.Empty;
+            var airlineName = string.Empty;
+            string rawAirlineParm = string.Empty;
             var airport = string.Empty;
             var apiEndpoint = string.Empty;
+            var useDatabaseCache = false;
 
             try
             {
@@ -172,28 +198,32 @@ namespace FIDSAPI.Controllers
                     {
                         disposition = DispositionFilter.ScheduledArriving;
                         var parms = parm.Split(" ");
-                        airline = GetAirline(parms[1]);
+                        rawAirlineParm = parms[1];
+                        airlineName = GetAirline(parms[1]);
                         apiEndpoint = "scheduled_arrivals";
                     }
                     else if (parm.StartsWith("departing"))
                     {
                         disposition = DispositionFilter.ScheduledDepartures;
                         var parms = parm.Split(" ");
-                        airline = GetAirline(parms[1]);
+                        rawAirlineParm = parms[1];
+                        airlineName = GetAirline(parms[1]);
                         apiEndpoint = "scheduled_departures";
                     }
                     else if (parm.StartsWith("arrived"))
                     {
                         disposition = DispositionFilter.Arrived;
                         var parms = parm.Split(" ");
-                        airline = GetAirline(parms[1]);
+                        rawAirlineParm = parms[1];
+                        airlineName = GetAirline(parms[1]);
                         apiEndpoint = "arrivals";
                     }
                     else if (parm.StartsWith("departed"))
                     {
                         disposition = DispositionFilter.Departed;
                         var parms = parm.Split(" ");
-                        airline = GetAirline(parms[1]);
+                        rawAirlineParm = parms[1];
+                        airlineName = GetAirline(parms[1]);
                         apiEndpoint = "departures";
                     }
 
@@ -211,6 +241,13 @@ namespace FIDSAPI.Controllers
                         var parms = parm.Split(" ");
                         timeAt = ParseDateFromString(parms[1]);
                     }
+
+                    if (parm.StartsWith("from") || parm.StartsWith("to"))
+                    {
+                        useDatabaseCache = true;
+                        var parms = parm.Split(" ");
+                        airport = parms[1];
+                    }
                 }
 
             }
@@ -223,6 +260,57 @@ namespace FIDSAPI.Controllers
 
             if (string.IsNullOrWhiteSpace(nextDataPageUrl) && disposition.Equals(DispositionFilter.None)) return response;
 
+            if (TimeFilter.None.Equals(timeType))
+            {
+                timeType = TimeFilter.Between;
+                timeFrom = DateTime.Now.AddHours(-DateTime.Now.Hour).AddMinutes(-DateTime.Now.Minute);
+                timeTo = timeFrom.AddHours(24);
+            }
+
+            if (useDatabaseCache)
+            {
+                using (SqlConnection connection = new SqlConnection(FastDatabaseConnectionStringBuilder.GetSqlConnectionString(_configuration)))
+                {
+                    connection.Open();
+
+                    foreach (var flight in GetFlights(connection, timeFrom, timeTo, rawAirlineParm, airport))
+                    {
+                        var flightModel = new BaseAirportFlightModel
+                        {
+                            FlightNumber = flight.FlightNumber,
+                            AirportGate = flight.Gate,
+                            ScheduledArrivalTime = flight.DateTimeScheduled,
+                            ScheduledDepartureTime = flight.DateTimeScheduled,
+                            EstimatedArrivalTime = flight.DateTimeEstimated,
+                            EstimatedDepartureTime = flight.DateTimeEstimated,
+                            ActualArrivalTime = flight.DateTimeActual,
+                            ActualDepartureTime = flight.DateTimeActual,
+                            CityName = flight.CityName,
+                            CityCode = flight.CityAirportCode,
+                            CityAirportName = flight.CityAirportName
+                        };
+
+                        if (!string.IsNullOrWhiteSpace(flight.Airline) && Airlines2.ContainsKey(flight.Airline))
+                        {
+                            flightModel.AirlineName = Airlines2[flight.Airline].Name;
+                            flightModel.AirlineIdentifier = Airlines2[flight.Airline].ICAOCode;
+                        }
+                        else
+                        {
+                            flightModel.AirlineName = GetAirline(flight.Airline);
+                            flightModel.AirlineIdentifier = flight.Airline;
+                        }
+
+                        response.Results.Add(flightModel);
+                    }
+
+                    connection.Close();
+                }
+
+                
+
+                return response;
+            }
 
             const string BaseUri = "https://aeroapi.flightaware.com/aeroapi";
 
@@ -233,7 +321,7 @@ namespace FIDSAPI.Controllers
 
                 if (string.IsNullOrWhiteSpace(nextDataPageUrl))
                 {
-                    endpoint = $"/airports/KBNA/flights/{apiEndpoint}?{BuildFlightAwareQueryString(timeType, timeFrom, timeTo, timeAt, airline)}";
+                    endpoint = $"/airports/KBNA/flights/{apiEndpoint}?{BuildFlightAwareQueryString(timeType, timeFrom, timeTo, timeAt, airlineName)}";
                 }
                 else
                 {
@@ -379,8 +467,7 @@ namespace FIDSAPI.Controllers
                 {
                     if (string.IsNullOrWhiteSpace(cursor))
                     {
-                        DateTime currentUtcDate = DateTime.UtcNow;
-                        DateTime fromDateTime = currentUtcDate.AddHours(-currentUtcDate.Hour).AddMinutes(-currentUtcDate.Minute).AddSeconds(-currentUtcDate.Second).AddHours(-5);
+                        DateTime fromDateTime = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0).AddHours(5);
                         DateTime toDateTime = fromDateTime.AddHours(24).AddSeconds(-1);
 
 
@@ -517,6 +604,86 @@ namespace FIDSAPI.Controllers
             }
         }
 
+        //TODO: MOVE TO DATALAYER
+        private List<Flight> GetFlights(SqlConnection conn, DateTime fromDate, DateTime toDate, string airline, string city)
+        {
+            var flights = new List<Flight>();
+            string sql = @"
+SELECT 
+ Disposition
+,FlightNumber
+,Airline
+,DateTimeScheduled
+,DateTimeEstimated
+,DateTimeActual
+,Gate
+,CityName
+,CityAirportName
+,CityAirportCode
+,DateTimeCreated
+FROM Flights
+";
+            var filterString = string.Empty;
+            using (SqlCommand command = new SqlCommand(sql, conn))
+            {
+                command.Parameters.AddWithValue("@FromDate", fromDate.AddHours(5));
+                command.Parameters.AddWithValue("@ToDate", toDate.AddHours(5));
+                filterString = "WHERE DateTimeScheduled BETWEEN @FromDate AND @ToDate ";
+
+                if (!string.IsNullOrWhiteSpace(airline))
+                {
+                    command.Parameters.AddWithValue("@Airline", airline);
+                    filterString += "AND Airline = @Airline ";
+                }
+               
+                if (!string.IsNullOrWhiteSpace(city))
+                {
+                    command.Parameters.AddWithValue("@CityAirportCode", city);
+                    filterString += "AND CityAirportCode = @CityAirportCode ";
+                }
+
+                command.CommandText += filterString;
+
+                using (SqlDataReader reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        var flight = new Flight
+                        {
+                            Disposition = bool.Parse(reader["Disposition"].ToString()),
+                            FlightNumber = reader["FlightNumber"].ToString().Trim(),
+                            Airline = reader["Airline"].ToString().Trim(),
+                            Gate = reader["Gate"].ToString(),
+                            CityName = reader["CityName"].ToString(),
+                            CityAirportName = reader["CityAirportName"].ToString(),
+                            CityAirportCode = reader["CityAirportCode"].ToString(),
+                            DateTimeCreated = DateTime.Parse(reader["DateTimeCreated"].ToString())
+                        };
+
+                        DateTime parsedTime;
+
+                        if (DateTime.TryParse(reader["DateTimeScheduled"].ToString(), out parsedTime))
+                        {
+                            //TODO: Why is the to local time needed when it's not when pulling directly from the FA API?
+                            flight.DateTimeScheduled = parsedTime.ToLocalTime();
+                        }
+                        if (DateTime.TryParse(reader["DateTimeEstimated"].ToString(), out parsedTime))
+                        {
+                            flight.DateTimeEstimated = parsedTime.ToLocalTime();
+                        }
+                        if (DateTime.TryParse(reader["DateTimeActual"].ToString(), out parsedTime))
+                        {
+                            flight.DateTimeActual = parsedTime.ToLocalTime();
+                        }
+
+                        flights.Add(flight);
+                    }
+                }
+            }
+
+            return flights;
+        }
+
         private void InsertFlight(Flight flight, SqlConnection conn)
         {
             string sql = @"
@@ -526,6 +693,8 @@ INSERT INTO Flights
 ,FlightNumber
 ,Airline
 ,DateTimeScheduled
+,DateTimeEstimated
+,DateTimeActual
 ,Gate
 ,CityName
 ,CityAirportName
@@ -538,6 +707,8 @@ VALUES
 ,@FlightNumber
 ,@Airline
 ,@DateTimeScheduled
+,@DateTimeEstimated
+,@DateTimeActual
 ,@Gate
 ,@CityName
 ,@CityAirportName
@@ -560,11 +731,33 @@ VALUES
                     command.Parameters.AddWithValue("@DateTimeScheduled", DBNull.Value);
 
                 }
+                
+                if (flight.DateTimeEstimated.HasValue)
+                {
+                    command.Parameters.AddWithValue("@DateTimeEstimated", flight.DateTimeEstimated.Value);
+
+                }
+                else
+                {
+                    command.Parameters.AddWithValue("@DateTimeEstimated", DBNull.Value);
+
+                }
+                
+                if (flight.DateTimeActual.HasValue)
+                {
+                    command.Parameters.AddWithValue("@DateTimeActual", flight.DateTimeActual.Value);
+
+                }
+                else
+                {
+                    command.Parameters.AddWithValue("@DateTimeActual", DBNull.Value);
+
+                }
                 command.Parameters.AddWithValue("@Gate", flight.Gate ?? "");
                 command.Parameters.AddWithValue("@CityName", flight.CityName ?? "");
                 command.Parameters.AddWithValue("@CityAirportName", flight.CityAirportName ?? "");
                 command.Parameters.AddWithValue("@CityAirportCode", flight.CityAirportCode ?? "");
-                command.Parameters.AddWithValue("@DateTimeCreated", DateTime.UtcNow);
+                command.Parameters.AddWithValue("@DateTimeCreated", DateTime.Now);
 
                 command.ExecuteNonQuery();
             }
