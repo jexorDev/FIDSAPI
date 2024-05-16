@@ -328,7 +328,8 @@ namespace FIDSAPI.Controllers
                     endpoint = nextDataPageUrlDecoded;
                 }
 
-                var flightAwareResponseObject = await client.GetAsync($"{BaseUri}{endpoint}");
+                var apiRequestQuery = $"{BaseUri}{endpoint}";
+                var flightAwareResponseObject = await client.GetAsync(apiRequestQuery);
                 var flightAwareResponseBody = flightAwareResponseObject.Content.ReadAsStringAsync().Result;
 
                 if (flightAwareResponseBody == null) return response;
@@ -358,7 +359,6 @@ namespace FIDSAPI.Controllers
                                 CityCode = arrival.origin.code_iata,
                                 CityName = arrival.origin.city,
                                 CityAirportName = arrival.origin.name,
-                                RawData = flightAwareResponseBody
                             });
                         }
                     }
@@ -384,7 +384,6 @@ namespace FIDSAPI.Controllers
                                 CityCode = arrival.origin.code_iata,
                                 CityName = arrival.origin.city,
                                 CityAirportName = arrival.origin.name,
-                                RawData = flightAwareResponseBody
                             });
                         }
                     }
@@ -399,7 +398,7 @@ namespace FIDSAPI.Controllers
                                 Disposition = Disposition.Departure,
                                 FlightNumber = arrival.flight_number,
                                 AirportGate = arrival.gate_origin,
-                                AirlineIdentifier = arrival.operator_iata,
+                                AirlineIdentifier = arrival.operator_icao,
                                 AirlineName = GetAirlineWithCodesharePartners(arrival.operator_icao, arrival.codeshares),
                                 ScheduledDepartureTime = arrival.scheduled_out,
                                 EstimatedDepartureTime = arrival.estimated_out,
@@ -410,7 +409,6 @@ namespace FIDSAPI.Controllers
                                 CityCode = arrival.destination.code_iata,
                                 CityName = arrival.destination.city,
                                 CityAirportName = arrival.destination.name,
-                                RawData = flightAwareResponseBody
                             });
 
                         }
@@ -426,7 +424,7 @@ namespace FIDSAPI.Controllers
                                 Disposition = Disposition.Departure,
                                 FlightNumber = arrival.flight_number,
                                 AirportGate = arrival.gate_origin,
-                                AirlineIdentifier = arrival.operator_iata,
+                                AirlineIdentifier = arrival.operator_icao,
                                 AirlineName = GetAirlineWithCodesharePartners(arrival.operator_icao, arrival.codeshares),
                                 ScheduledDepartureTime = arrival.scheduled_out,
                                 EstimatedDepartureTime = arrival.estimated_out,
@@ -437,7 +435,6 @@ namespace FIDSAPI.Controllers
                                 CityCode = arrival.destination.code_iata,
                                 CityName = arrival.destination.city,
                                 CityAirportName = arrival.destination.name,
-                                RawData = flightAwareResponseBody
                             });
 
                         }
@@ -446,7 +443,9 @@ namespace FIDSAPI.Controllers
                     response.NextDataPageUrl = HttpUtility.UrlEncode(flightAwareResponse?.links?.next);
                 }
 
-               
+
+                response.GeneratedApiQuery = apiRequestQuery;
+                response.RawData = flightAwareResponseBody;
 
                 return response;
             }

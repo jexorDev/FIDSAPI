@@ -23,7 +23,7 @@
         public string CityCode { get; set; } = string.Empty;    
         public string CityName { get; set; } = string.Empty;
         public string CityAirportName { get; set; } = string.Empty;
-        public string RawData { get; set; } = string.Empty;
+
     }
 
     
