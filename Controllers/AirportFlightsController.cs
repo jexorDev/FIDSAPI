@@ -624,8 +624,8 @@ FROM Flights
             var filterString = string.Empty;
             using (SqlCommand command = new SqlCommand(sql, conn))
             {
-                command.Parameters.AddWithValue("@FromDate", fromDate.ToUniversalTime());
-                command.Parameters.AddWithValue("@ToDate", toDate.ToUniversalTime());
+                command.Parameters.AddWithValue("@FromDate", ConvertDateTimeToUtc(fromDate));
+                command.Parameters.AddWithValue("@ToDate", ConvertDateTimeToUtc(toDate));
                 filterString = "WHERE DateTimeScheduled BETWEEN @FromDate AND @ToDate ";
 
                 if (DispositionFilter.ScheduledArriving.Equals(disposition) || DispositionFilter.Arrived.Equals(disposition))
@@ -783,13 +783,13 @@ VALUES
 
             if (TimeFilter.Between.Equals(timeType))
             {
-                queryStringList.Add($"start={start.ToUniversalTime():s}");
-                queryStringList.Add($"end={end.ToUniversalTime():s}");
+                queryStringList.Add($"start={ConvertDateTimeToUtc(start):s}");
+                queryStringList.Add($"end={ConvertDateTimeToUtc(end):s}");
             }
             else if (TimeFilter.At.Equals(timeType))
             {
-                queryStringList.Add($"start={at.ToUniversalTime().AddMinutes(-30):s}");
-                queryStringList.Add($"end={at.ToUniversalTime().AddMinutes(30):s}");
+                queryStringList.Add($"start={ConvertDateTimeToUtc(at).AddMinutes(-30):s}");
+                queryStringList.Add($"end={ConvertDateTimeToUtc(at).AddMinutes(30):s}");
             }
 
             if (!string.IsNullOrWhiteSpace(airline))
@@ -857,6 +857,12 @@ VALUES
             }
 
             return String.Empty;
+        }
+
+        private DateTime ConvertDateTimeToUtc(DateTime dateToConvert)
+        {
+            TimeZoneInfo kstZone = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time");
+            return TimeZoneInfo.ConvertTime(dateToConvert, kstZone).ToUniversalTime();
         }
 
         private DateTime ParseDateFromString(string date)
