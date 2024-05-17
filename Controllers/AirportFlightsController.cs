@@ -263,7 +263,7 @@ namespace FIDSAPI.Controllers
             if (TimeFilter.None.Equals(timeType))
             {
                 timeType = TimeFilter.Between;
-                timeFrom = DateTime.Now.AddHours(-DateTime.Now.Hour).AddMinutes(-DateTime.Now.Minute);
+                timeFrom = DateTime.Now.AddHours(-DateTime.Now.Hour).AddMinutes(-DateTime.Now.Minute).AddSeconds(-DateTime.Now.Second);
                 timeTo = timeFrom.AddHours(24);
             }
 
@@ -273,7 +273,7 @@ namespace FIDSAPI.Controllers
                 {
                     connection.Open();
 
-                    foreach (var flight in GetFlights(connection, timeFrom, timeTo, rawAirlineParm, airport))
+                    foreach (var flight in GetFlights(connection, disposition, timeFrom, timeTo, rawAirlineParm, airport))
                     {
                         var flightModel = new BaseAirportFlightModel
                         {
@@ -302,12 +302,11 @@ namespace FIDSAPI.Controllers
                         }
 
                         response.Results.Add(flightModel);
+                        
                     }
 
                     connection.Close();
-                }
-
-                
+                }                
 
                 return response;
             }
@@ -466,7 +465,7 @@ namespace FIDSAPI.Controllers
                 {
                     if (string.IsNullOrWhiteSpace(cursor))
                     {
-                        DateTime fromDateTime = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0).AddHours(5);
+                        DateTime fromDateTime = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0).ToUniversalTime();
                         DateTime toDateTime = fromDateTime.AddHours(24).AddSeconds(-1);
 
 
@@ -604,7 +603,7 @@ namespace FIDSAPI.Controllers
         }
 
         //TODO: MOVE TO DATALAYER
-        private List<Flight> GetFlights(SqlConnection conn, DateTime fromDate, DateTime toDate, string airline, string city)
+        private List<Flight> GetFlights(SqlConnection conn, DispositionFilter disposition, DateTime fromDate, DateTime toDate, string airline, string city)
         {
             var flights = new List<Flight>();
             string sql = @"
@@ -625,9 +624,20 @@ FROM Flights
             var filterString = string.Empty;
             using (SqlCommand command = new SqlCommand(sql, conn))
             {
-                command.Parameters.AddWithValue("@FromDate", fromDate.AddHours(5));
-                command.Parameters.AddWithValue("@ToDate", toDate.AddHours(5));
+                command.Parameters.AddWithValue("@FromDate", fromDate.ToUniversalTime());
+                command.Parameters.AddWithValue("@ToDate", toDate.ToUniversalTime());
                 filterString = "WHERE DateTimeScheduled BETWEEN @FromDate AND @ToDate ";
+
+                if (DispositionFilter.ScheduledArriving.Equals(disposition) || DispositionFilter.Arrived.Equals(disposition))
+                {
+                    command.Parameters.AddWithValue("@Disposition", 1);
+                    filterString += "AND Disposition = @Disposition ";
+                }
+                else if (DispositionFilter.ScheduledDepartures.Equals(disposition) || DispositionFilter.Departed.Equals(disposition))
+                {
+                    command.Parameters.AddWithValue("@Disposition", 0);
+                    filterString += "AND Disposition = @Disposition ";
+                }
 
                 if (!string.IsNullOrWhiteSpace(airline))
                 {
@@ -773,13 +783,13 @@ VALUES
 
             if (TimeFilter.Between.Equals(timeType))
             {
-                queryStringList.Add($"start={start.AddHours(5):s}");
-                queryStringList.Add($"end={end.AddHours(5):s}");
+                queryStringList.Add($"start={start.ToUniversalTime():s}");
+                queryStringList.Add($"end={end.ToUniversalTime():s}");
             }
             else if (TimeFilter.At.Equals(timeType))
             {
-                queryStringList.Add($"start={at.AddHours(5).AddMinutes(-30):s}");
-                queryStringList.Add($"end={at.AddHours(5).AddMinutes(30):s}");
+                queryStringList.Add($"start={at.ToUniversalTime().AddMinutes(-30):s}");
+                queryStringList.Add($"end={at.ToUniversalTime().AddMinutes(30):s}");
             }
 
             if (!string.IsNullOrWhiteSpace(airline))
