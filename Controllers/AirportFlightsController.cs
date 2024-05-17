@@ -861,7 +861,7 @@ VALUES
 
         private DateTime ConvertDateTimeToUtc(DateTime dateToConvert)
         {
-            return dateToConvert.ToUniversalTime().AddHours(-5);
+            return dateToConvert.ToUniversalTime().AddHours(5);
         }
 
         private DateTime ParseDateFromString(string date)
