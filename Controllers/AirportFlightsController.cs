@@ -861,8 +861,7 @@ VALUES
 
         private DateTime ConvertDateTimeToUtc(DateTime dateToConvert)
         {
-            TimeZoneInfo kstZone = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time");
-            return TimeZoneInfo.ConvertTime(dateToConvert, kstZone).ToUniversalTime();
+            return dateToConvert.ToUniversalTime().AddHours(-5);
         }
 
         private DateTime ParseDateFromString(string date)
