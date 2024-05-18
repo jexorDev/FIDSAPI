@@ -1,6 +1,6 @@
 ﻿namespace FIDSAPI.Models
 {
-    public enum Disposition
+    public enum DispositionType
     {
         Arrival,
         Departure
@@ -8,7 +8,7 @@
 
     public class BaseAirportFlightModel
     {
-        public Disposition Disposition { get; set; }
+        public DispositionType Disposition { get; set; }
         public string Status { get; set; } = string.Empty;
         public string AirlineIdentifier { get; set; } = string.Empty;
         public string AirlineName { get; set; } = string.Empty;

@@ -1,4 +1,4 @@
-﻿namespace FIDSAPI.Models.DataLayer
+﻿namespace FIDSAPI.DataLayer.DataTransferObjects
 {
     public class Flight
     {
