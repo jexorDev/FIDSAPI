@@ -26,15 +26,26 @@ namespace FIDSAPI.Controllers
         }
 
         [HttpGet]
-        public async Task<List<BaseAirportFlightModel>> Get([FromQuery] Enumerations.Disposition.Type dispositionType, DateTime fromDateTime, DateTime toDateTime)
+        public async Task<List<BaseAirportFlightModel>> Get([FromQuery] Enumerations.Disposition.Type dispositionType, DateTime fromDateTime, DateTime toDateTime, string? airline, string? city)
         {
-            var flights = new List<BaseAirportFlightModel>();  
+            var flights = new List<BaseAirportFlightModel>();
+
+            var airlineCode = string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(airline))
+            {
+                var convertedAirline = AirlineDirectory.GetAirlineByKeyword(airline);
+                if (convertedAirline.HasValue)
+                {
+                    airlineCode = convertedAirline.Value.IATACode;
+                }
+            }
 
             using (SqlConnection connection = new SqlConnection(DatabaseConnectionStringBuilder.GetSqlConnectionString(_configuration)))
             {
                 connection.Open();
 
-                foreach (var flight in _flightSqlRepository.GetFlights(connection, dispositionType, fromDateTime, toDateTime, airline:"", city:""))
+                foreach (var flight in _flightSqlRepository.GetFlights(connection, dispositionType, fromDateTime, toDateTime, airlineCode, city))
                 {
                     var flightModel = new BaseAirportFlightModel
                     {
