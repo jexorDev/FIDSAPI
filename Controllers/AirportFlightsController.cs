@@ -1,4 +1,3 @@
-using FIDSAPI.DataLayer.DataTransferObjects;
 using FIDSAPI.DataLayer.SqlRepositories;
 using FIDSAPI.Enumerations;
 using FIDSAPI.Models;
@@ -13,7 +12,7 @@ using static FIDSAPI.Utility.AirlineDirectory;
 namespace FIDSAPI.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("AirportFlights")]
     public class AirportFlightsController : ControllerBase
     {
         
@@ -26,29 +25,9 @@ namespace FIDSAPI.Controllers
             _configuration = config;
             _logger = logger;
             _flightSqlRepository = new FlightsSqlRepository();
-        }
+        }     
 
-        //TODO: Move to new controller
-        [HttpPost(Name = "PostPopulateCache")]
-        public async Task PopulateCache()
-        {
-            using (SqlConnection connection = new SqlConnection(DatabaseConnectionStringBuilder.GetSqlConnectionString(_configuration)))
-            {
-                connection.Open();
-
-                await PopulateFlightTable("arrivals", connection);
-                Thread.Sleep(60000);
-                await PopulateFlightTable("scheduled_arrivals", connection);
-                Thread.Sleep(60000);
-                await PopulateFlightTable("departures", connection);
-                Thread.Sleep(60000);
-                await PopulateFlightTable("scheduled_departures", connection);
-
-                connection.Close();
-            }
-        }           
-
-        [HttpGet(Name = "GetAirportFlights")]
+        [HttpGet]
         public async Task<GetResponseBody> Get([FromQuery] GetAirportFlightsRequestParameters parameters)
         {
             var nextDataPageUrlDecoded = HttpUtility.UrlDecode(parameters.NextDataPageUrl);
@@ -124,9 +103,7 @@ namespace FIDSAPI.Controllers
                 }                
 
                 return response;
-            }
-
-            
+            }            
 
             using (HttpClient client = new HttpClient())
             {
@@ -263,151 +240,6 @@ namespace FIDSAPI.Controllers
 
                 return response;
             }
-        }
-
-        //TODO: move to new controller
-        private async Task PopulateFlightTable(string resource, SqlConnection conn)
-        {
-            using (HttpClient client = new HttpClient())
-            {
-                int count = 0;
-                var restOfUrl = string.Empty;
-                var cursor = string.Empty;
-                client.DefaultRequestHeaders.Add("X-Apikey", _configuration["FlightAwareKey"]);
-
-                do
-                {
-                    if (string.IsNullOrWhiteSpace(cursor))
-                    {
-                        DateTime fromDateTime = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0).ToUniversalTime();
-                        DateTime toDateTime = fromDateTime.AddHours(24).AddSeconds(-1);
-
-
-                        restOfUrl = $"/airports/{_configuration["AirportCode"]}/flights/{resource}?type=Airline&start={DateConversions.GetFormattedISODateTime(fromDateTime)}&end={DateConversions.GetFormattedISODateTime(toDateTime)}";
-                    }
-                    else
-                    {
-                        restOfUrl = cursor;
-                    }
-
-                    if (count > 9)
-                    {
-                        Thread.Sleep(60000);
-                        count = 0;
-                    }
-                    var flightAwareResponseObject = await client.GetAsync(FlightAwareApi.BaseUri + restOfUrl);
-                    count++;
-                    var flightAwareResponseBody = flightAwareResponseObject.Content.ReadAsStringAsync().Result;
-
-                    if (flightAwareResponseBody == null) return;
-
-                    FlightAwareAirportFlightsResponseObject flightAwareResponse = JsonConvert.DeserializeObject<FlightAwareAirportFlightsResponseObject>(flightAwareResponseBody);
-
-                    if (flightAwareResponse != null)
-                    {
-                        InsertFlights(flightAwareResponse, conn);
-                    }
-
-                    cursor = flightAwareResponse?.links?.next;
-
-                } while (!string.IsNullOrWhiteSpace(cursor));
-            }
-        }
-
-        private void InsertFlights(FlightAwareAirportFlightsResponseObject flightAwareResponse, SqlConnection conn)
-        {
-            if (flightAwareResponse.arrivals != null)
-            {
-                foreach (var arrival in flightAwareResponse.arrivals)
-                {
-                    var flight = new Flight
-                    {
-                        Disposition = true,
-                        FlightNumber = arrival.flight_number,
-                        Airline = arrival.operator_iata,
-                        DateTimeScheduled = arrival.scheduled_in,
-                        DateTimeEstimated = arrival.estimated_in,
-                        DateTimeActual = arrival.actual_in,
-                        Gate = arrival.gate_destination,
-                        CityName = arrival.origin.city,
-                        CityAirportCode = arrival.origin.code_iata,
-                        CityAirportName = arrival.origin.name,
-                        DateTimeCreated = DateTime.UtcNow
-                    };
-
-                    _flightSqlRepository.InsertFlight(flight, conn);
-                }
-            }
-
-            
-            if (flightAwareResponse.scheduled_arrivals != null)
-            {
-                foreach (var arrival in flightAwareResponse.scheduled_arrivals)
-                {
-                    var flight = new Flight
-                    {
-                        Disposition = true,
-                        FlightNumber = arrival.flight_number,
-                        Airline = arrival.operator_iata,
-                        DateTimeScheduled = arrival.scheduled_in,
-                        DateTimeEstimated = arrival.estimated_in,
-                        DateTimeActual = arrival.actual_in,
-                        Gate = arrival.gate_destination,
-                        CityName = arrival.origin.city,
-                        CityAirportCode = arrival.origin.code_iata,
-                        CityAirportName = arrival.origin.name,
-                        DateTimeCreated = DateTime.UtcNow
-                    };
-
-                    _flightSqlRepository.InsertFlight(flight, conn);
-                }
-            }
-
-            if (flightAwareResponse.departures != null)
-            {
-                foreach (var departure in flightAwareResponse.departures)
-                {
-                    var flight = new Flight
-                    {
-                        Disposition = false,
-                        FlightNumber = departure.flight_number,
-                        Airline = departure.operator_iata,
-                        DateTimeScheduled = departure.scheduled_out,
-                        DateTimeEstimated = departure.estimated_out,
-                        DateTimeActual = departure.actual_out,
-                        Gate = departure.gate_destination,
-                        CityName = departure.destination.city,
-                        CityAirportCode = departure.destination.code_iata,
-                        CityAirportName = departure.destination.name,
-                        DateTimeCreated = DateTime.UtcNow
-                    };
-
-                    _flightSqlRepository.InsertFlight(flight, conn);
-                }
-            }
-
-            if (flightAwareResponse.scheduled_departures != null)
-            {
-                foreach (var departure in flightAwareResponse.scheduled_departures)
-                {
-                    var flight = new Flight
-                    {
-                        Disposition = false,
-                        FlightNumber = departure.flight_number,
-                        Airline = departure.operator_iata,
-                        DateTimeScheduled = departure.scheduled_out,
-                        DateTimeEstimated = departure.estimated_out,
-                        DateTimeActual = departure.actual_out,
-                        Gate = departure.gate_destination,
-                        CityName = departure.destination.city,
-                        CityAirportCode = departure.destination.code_iata,
-                        CityAirportName = departure.destination.name,
-                        DateTimeCreated = DateTime.UtcNow
-                    };
-
-                    _flightSqlRepository.InsertFlight(flight, conn);
-                }
-            }
-        }             
+        }       
     }
 }
