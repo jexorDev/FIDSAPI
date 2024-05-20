@@ -1,5 +1,6 @@
 ﻿using FIDSAPI.DataLayer.DataTransferObjects;
 using FIDSAPI.Enumerations;
+using FIDSAPI.Utility;
 using System.Data.SqlClient;
 
 namespace FIDSAPI.DataLayer.SqlRepositories
@@ -45,7 +46,23 @@ FROM Flights
                 if (!string.IsNullOrWhiteSpace(airline))
                 {
                     command.Parameters.AddWithValue("@Airline", airline);
-                    filterString += "AND Airline = @Airline ";
+                    filterString += "AND (Airline = @Airline ";
+
+                    //TODO: temporary, need to store IATACode instead
+                    var airlineObj = AirlineDirectory.GetAirlineByKeyword(airline);
+                    if (airlineObj.HasValue)
+                    {
+                        command.Parameters.AddWithValue("@CodeshareID", airlineObj.Value.ICAOCode);
+                        filterString += @"
+    OR EXISTS (SELECT *
+               FROM FlightCodeSharePartners
+               WHERE SUBSTRING(CodeshareID, 1, 3) = @CodeshareID
+                 AND FlightPK = Flights.PK
+              ) ";
+
+                    }
+
+                    filterString += ") ";
                 }
 
                 if (!string.IsNullOrWhiteSpace(city))
@@ -96,7 +113,7 @@ FROM Flights
             return flights;
         }
 
-        public void InsertFlight(Flight flight, SqlConnection conn)
+        public int InsertFlight(Flight flight, SqlConnection conn)
         {
             string sql = @"
 INSERT INTO Flights 
@@ -126,7 +143,8 @@ VALUES
 ,@CityAirportName
 ,@CityAirportCode
 ,@DateTimeCreated
-)
+);
+SELECT SCOPE_IDENTITY();
 ";
             using (SqlCommand command = new SqlCommand(sql, conn))
             {
@@ -169,7 +187,29 @@ VALUES
                 command.Parameters.AddWithValue("@CityName", flight.CityName ?? "");
                 command.Parameters.AddWithValue("@CityAirportName", flight.CityAirportName ?? "");
                 command.Parameters.AddWithValue("@CityAirportCode", flight.CityAirportCode ?? "");
-                command.Parameters.AddWithValue("@DateTimeCreated", DateTime.Now);
+                command.Parameters.AddWithValue("@DateTimeCreated", DateTime.UtcNow);
+
+                return Convert.ToInt32(command.ExecuteScalar());
+            }
+        }
+
+        public void InsertCodesharePartner(SqlConnection conn, int flightPk, string codesharePartner)
+        {
+            string sql = @"
+INSERT INTO FlightCodesharePartners 
+(
+ FlightPK
+,CodeshareID
+)
+VALUES
+(
+ @FlightPK
+,@CodeshareID
+);";
+            using (SqlCommand command = new SqlCommand(sql, conn))
+            {
+                command.Parameters.AddWithValue("@FlightPK", flightPk);
+                command.Parameters.AddWithValue("@CodeshareID", codesharePartner);
 
                 command.ExecuteNonQuery();
             }

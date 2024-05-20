@@ -173,7 +173,12 @@ namespace FIDSAPI.Controllers
                         DateTimeCreated = DateTime.UtcNow
                     };
 
-                    _flightSqlRepository.InsertFlight(flight, conn);
+                    var pk  = _flightSqlRepository.InsertFlight(flight, conn);
+                    
+                    foreach (var codesharePartner in arrival.codeshares)
+                    {
+                        _flightSqlRepository.InsertCodesharePartner(conn, pk, codesharePartner);
+                    }
                 }
             }
 
@@ -197,7 +202,12 @@ namespace FIDSAPI.Controllers
                         DateTimeCreated = DateTime.UtcNow
                     };
 
-                    _flightSqlRepository.InsertFlight(flight, conn);
+                    var pk = _flightSqlRepository.InsertFlight(flight, conn);
+
+                    foreach (var codesharePartner in arrival.codeshares)
+                    {
+                        _flightSqlRepository.InsertCodesharePartner(conn, pk, codesharePartner);
+                    }
                 }
             }
 
@@ -220,7 +230,12 @@ namespace FIDSAPI.Controllers
                         DateTimeCreated = DateTime.UtcNow
                     };
 
-                    _flightSqlRepository.InsertFlight(flight, conn);
+                    var pk = _flightSqlRepository.InsertFlight(flight, conn);
+
+                    foreach (var codesharePartner in departure.codeshares)
+                    {
+                        _flightSqlRepository.InsertCodesharePartner(conn, pk, codesharePartner);
+                    }
                 }
             }
 
@@ -237,13 +252,18 @@ namespace FIDSAPI.Controllers
                         DateTimeEstimated = departure.estimated_out,
                         DateTimeActual = departure.actual_out,
                         Gate = departure.gate_destination,
-                        CityName = departure.destination.city,
-                        CityAirportCode = departure.destination.code_iata,
-                        CityAirportName = departure.destination.name,
+                        CityName = departure.destination?.city ?? "",
+                        CityAirportCode = departure.destination?.code_iata ?? "",
+                        CityAirportName = departure.destination?.name ?? "",
                         DateTimeCreated = DateTime.UtcNow
                     };
 
-                    _flightSqlRepository.InsertFlight(flight, conn);
+                    var pk = _flightSqlRepository.InsertFlight(flight, conn);
+
+                    foreach (var codesharePartner in departure.codeshares)
+                    {
+                        _flightSqlRepository.InsertCodesharePartner(conn, pk, codesharePartner);
+                    }
                 }
             }
         }
