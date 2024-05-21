@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using System.Data.SqlClient;
 using System.Web;
-using static FIDSAPI.Utility.AirlineDirectory;
 
 namespace FIDSAPI.Controllers
 {
@@ -32,32 +31,32 @@ namespace FIDSAPI.Controllers
         {
             var nextDataPageUrlDecoded = HttpUtility.UrlDecode(parameters.NextDataPageUrl);
 
-            Airline? airline = AirlineDirectory.GetAirlineByKeyword(parameters.Airline); 
+            Airline? airline = AirlineRegistry.FindAirline(parameters?.Airline ?? ""); 
             var apiEndpoint = string.Empty;
             
             //FlightAware API doesn't provide filtering by airport, so have to use cached data in db
-            var useDatabaseCache = !string.IsNullOrWhiteSpace(parameters.Airport);
+            var useDatabaseCache = !string.IsNullOrWhiteSpace(parameters?.Airport);
 
-            if (Disposition.Type.ScheduledArriving.Equals(parameters.DispositionType))
+            if (Disposition.Type.ScheduledArriving.Equals(parameters?.DispositionType))
             {
                 apiEndpoint = "scheduled_arrivals";
             }
-            else if (Disposition.Type.ScheduledDepartures.Equals(parameters.DispositionType))
+            else if (Disposition.Type.ScheduledDepartures.Equals(parameters?.DispositionType))
             {
                 apiEndpoint = "scheduled_departures";
             }
-            else if (Disposition.Type.Arrived.Equals(parameters.DispositionType))
+            else if (Disposition.Type.Arrived.Equals(parameters?.DispositionType))
             {
                 apiEndpoint = "arrivals";
             }
-            else if (Disposition.Type.Departed.Equals(parameters.DispositionType))
+            else if (Disposition.Type.Departed.Equals(parameters?.DispositionType))
             {
                 apiEndpoint = "departures";
             }
 
             var response = new GetResponseBody();
 
-            if (string.IsNullOrWhiteSpace(parameters.NextDataPageUrl) && parameters.DispositionType.Equals(Disposition.Type.None)) return response;
+            if (string.IsNullOrWhiteSpace(parameters?.NextDataPageUrl) && Disposition.Type.None.Equals(parameters?.DispositionType)) return response;
 
             if (useDatabaseCache)
             {
@@ -65,8 +64,9 @@ namespace FIDSAPI.Controllers
                 {
                     connection.Open();
 
-                    foreach (var flight in _flightSqlRepository.GetFlights(connection, parameters.DispositionType, parameters.DateTimeFrom, parameters.DateTimeTo, (airline.HasValue ? airline.Value.IATACode : ""), parameters.Airport))
+                    foreach (var flight in _flightSqlRepository.GetFlights(connection, parameters?.DispositionType ?? Disposition.Type.None, parameters.DateTimeFrom, parameters.DateTimeTo, (airline?.IataCode ?? ""), parameters.Airport ?? "", false))
                     {
+                        //TODO: make shared code for this
                         var flightModel = new BaseAirportFlightModel
                         {
                             FlightNumber = flight.FlightNumber,
@@ -82,12 +82,12 @@ namespace FIDSAPI.Controllers
                             CityAirportName = flight.CityAirportName
                         };
 
-                        var flightAirline = AirlineDirectory.GetAirlineByKeyword(flight.Airline);
+                        var flightAirline = AirlineRegistry.FindAirline(flight.Airline);
 
-                        if (flightAirline.HasValue)
+                        if (flightAirline != null)
                         {
-                            flightModel.AirlineName = flightAirline.Value.Name;
-                            flightModel.AirlineIdentifier = flightAirline.Value.ICAOCode;
+                            flightModel.AirlineName = flightAirline.Name;
+                            flightModel.AirlineIdentifier = flightAirline.IcaoCode;
                         }
                         else
                         {
@@ -110,9 +110,9 @@ namespace FIDSAPI.Controllers
                 client.DefaultRequestHeaders.Add("X-Apikey", _configuration["FlightAwareKey"]);
                 string endpoint = string.Empty;
 
-                if (string.IsNullOrWhiteSpace(parameters.NextDataPageUrl))
+                if (string.IsNullOrWhiteSpace(nextDataPageUrlDecoded))
                 {
-                    endpoint = $"/airports/{_configuration["AirportCode"]}/flights/{apiEndpoint}?{FlightAwareApi.BuildFlightAwareQueryString(parameters.DateTimeFrom, parameters.DateTimeTo, (airline.HasValue ? airline.Value.ICAOCode : ""))}";
+                    endpoint = $"/airports/{_configuration["AirportCode"]}/flights/{apiEndpoint}?{FlightAwareApi.BuildFlightAwareQueryString(parameters.DateTimeFrom, parameters.DateTimeTo, airline?.IcaoCode ?? "")}";
                 }
                 else
                 {
@@ -231,10 +231,13 @@ namespace FIDSAPI.Controllers
                         }
                     }
 
-                    response.NextDataPageUrl = HttpUtility.UrlEncode(flightAwareResponse?.links?.next);
+                    if (flightAwareResponse.links != null)
+                    {
+                        response.NextDataPageUrl = HttpUtility.UrlEncode(flightAwareResponse.links.next);
+                    }
                 }
 
-
+                //TODO: remove when done debugging
                 response.GeneratedApiQuery = apiRequestQuery;
                 response.RawData = flightAwareResponseBody;
 

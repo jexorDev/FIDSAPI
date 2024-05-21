@@ -1,5 +1,6 @@
 using FIDSAPI.DataLayer.DataTransferObjects;
 using FIDSAPI.DataLayer.SqlRepositories;
+using FIDSAPI.Enumerations;
 using FIDSAPI.Models;
 using FIDSAPI.Models.FlightAware;
 using FIDSAPI.Utility;
@@ -26,18 +27,19 @@ namespace FIDSAPI.Controllers
         }
 
         [HttpGet]
-        public async Task<List<BaseAirportFlightModel>> Get([FromQuery] Enumerations.Disposition.Type dispositionType, DateTime fromDateTime, DateTime toDateTime, string? airline, string? city)
+        public async Task<List<BaseAirportFlightModel>> Get([FromQuery] Disposition.Type dispositionType, DateTime fromDateTime, DateTime toDateTime, string? airline, string? city, bool? includeCodesharePartners)
         {
+            Utility.AirlineRegistry.GetAirlines();
             var flights = new List<BaseAirportFlightModel>();
 
             var airlineCode = string.Empty;
 
             if (!string.IsNullOrWhiteSpace(airline))
             {
-                var convertedAirline = AirlineDirectory.GetAirlineByKeyword(airline);
-                if (convertedAirline.HasValue)
+                var convertedAirline = AirlineRegistry.FindAirline(airline);
+                if (convertedAirline != null)
                 {
-                    airlineCode = convertedAirline.Value.IATACode;
+                    airlineCode = convertedAirline.IataCode;
                 }
             }
 
@@ -45,8 +47,9 @@ namespace FIDSAPI.Controllers
             {
                 connection.Open();
 
-                foreach (var flight in _flightSqlRepository.GetFlights(connection, dispositionType, fromDateTime, toDateTime, airlineCode, city))
+                foreach (var flight in _flightSqlRepository.GetFlights(connection, dispositionType, fromDateTime, toDateTime, airlineCode, city ?? "", includeCodesharePartners ?? false))
                 {
+                    //TODO: make shared code for this
                     var flightModel = new BaseAirportFlightModel
                     {
                         FlightNumber = flight.FlightNumber,
@@ -62,12 +65,12 @@ namespace FIDSAPI.Controllers
                         CityAirportName = flight.CityAirportName
                     };
 
-                    var flightAirline = AirlineDirectory.GetAirlineByKeyword(flight.Airline);
+                    var flightAirline = AirlineRegistry.FindAirline(flight.Airline);
 
-                    if (flightAirline.HasValue)
+                    if (flightAirline != null)
                     {
-                        flightModel.AirlineName = flightAirline.Value.Name;
-                        flightModel.AirlineIdentifier = flightAirline.Value.ICAOCode;
+                        flightModel.AirlineName = flightAirline.Name;
+                        flightModel.AirlineIdentifier = flightAirline.IcaoCode;
                     }
                     else
                     {
@@ -175,7 +178,7 @@ namespace FIDSAPI.Controllers
 
                     var pk  = _flightSqlRepository.InsertFlight(flight, conn);
                     
-                    foreach (var codesharePartner in arrival.codeshares)
+                    foreach (var codesharePartner in arrival.codeshares_iata)
                     {
                         _flightSqlRepository.InsertCodesharePartner(conn, pk, codesharePartner);
                     }
@@ -204,7 +207,7 @@ namespace FIDSAPI.Controllers
 
                     var pk = _flightSqlRepository.InsertFlight(flight, conn);
 
-                    foreach (var codesharePartner in arrival.codeshares)
+                    foreach (var codesharePartner in arrival.codeshares_iata)
                     {
                         _flightSqlRepository.InsertCodesharePartner(conn, pk, codesharePartner);
                     }
@@ -232,7 +235,7 @@ namespace FIDSAPI.Controllers
 
                     var pk = _flightSqlRepository.InsertFlight(flight, conn);
 
-                    foreach (var codesharePartner in departure.codeshares)
+                    foreach (var codesharePartner in departure.codeshares_iata)
                     {
                         _flightSqlRepository.InsertCodesharePartner(conn, pk, codesharePartner);
                     }
@@ -260,7 +263,7 @@ namespace FIDSAPI.Controllers
 
                     var pk = _flightSqlRepository.InsertFlight(flight, conn);
 
-                    foreach (var codesharePartner in departure.codeshares)
+                    foreach (var codesharePartner in departure.codeshares_iata)
                     {
                         _flightSqlRepository.InsertCodesharePartner(conn, pk, codesharePartner);
                     }

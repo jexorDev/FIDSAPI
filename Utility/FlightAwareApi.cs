@@ -34,12 +34,12 @@ namespace FIDSAPI.Utility
         {
             try
             {
-                var convertedAirline = AirlineDirectory.GetAirlineByKeyword(airline)?.Name;
+                var convertedAirline = AirlineRegistry.FindAirline(airline)?.Name;
                 var convertedCodesharePartners = new List<string>();
 
                 foreach (var codeshareParter in codesharePartners)
                 {
-                    var convertedCodesharePartner = AirlineDirectory.GetAirlineByKeyword(codeshareParter)?.Name;
+                    var convertedCodesharePartner = AirlineRegistry.FindAirline(codeshareParter)?.Name;
                     if (!string.IsNullOrWhiteSpace(convertedCodesharePartner))
                     {
                         convertedCodesharePartners.Add(convertedCodesharePartner);

@@ -1,13 +1,12 @@
 ﻿using FIDSAPI.DataLayer.DataTransferObjects;
 using FIDSAPI.Enumerations;
-using FIDSAPI.Utility;
 using System.Data.SqlClient;
 
 namespace FIDSAPI.DataLayer.SqlRepositories
 {
     public class FlightsSqlRepository
     {
-        public List<Flight> GetFlights(SqlConnection conn, Disposition.Type disposition, DateTime fromDate, DateTime toDate, string airline, string city)
+        public List<Flight> GetFlights(SqlConnection conn, Disposition.Type disposition, DateTime fromDate, DateTime toDate, string airline, string city, bool includeCodesharePartners)
         {
             var flights = new List<Flight>();
             string sql = @"
@@ -48,15 +47,13 @@ FROM Flights
                     command.Parameters.AddWithValue("@Airline", airline);
                     filterString += "AND (Airline = @Airline ";
 
-                    //TODO: temporary, need to store IATACode instead
-                    var airlineObj = AirlineDirectory.GetAirlineByKeyword(airline);
-                    if (airlineObj.HasValue)
+                    if (includeCodesharePartners)
                     {
-                        command.Parameters.AddWithValue("@CodeshareID", airlineObj.Value.ICAOCode);
+                        command.Parameters.AddWithValue("@CodeshareID", airline);
                         filterString += @"
     OR EXISTS (SELECT *
                FROM FlightCodeSharePartners
-               WHERE SUBSTRING(CodeshareID, 1, 3) = @CodeshareID
+               WHERE SUBSTRING(CodeshareID, 1, 2) = @CodeshareID
                  AND FlightPK = Flights.PK
               ) ";
 
